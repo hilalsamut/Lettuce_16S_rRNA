@@ -1,11 +1,20 @@
 ---
-title: "Quality Control"
+title: "Quality Control: Filtering & Trimming Amplicon Sequences"
 author: "Hilal Samut"
-date: "2025-03-01"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  html_document: default
-  pdf_document: default
-editor_options:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
+editor_options: 
   chunk_output_type: console
 ---
 
@@ -13,12 +22,11 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
-                      fig.path = "../figures/01_DADA2")
+                      fig.path = "../figures/01_QualityTrimming/") # send any figure output to this folder 
 ```
 
-# Goals of this file 
 
-**NOTE:** This document was **NOT** run during class. Instead, it is building off of what we covered in class to help move the learning along for lab next week. We will start at the error modeling step in lab next week.
+# Goals of this file 
 
 1. Use raw fastq files and generate quality plots to assess quality of reads.
 2. Filter and trim out bad sequences and bases from our sequencing files. 
@@ -53,7 +61,7 @@ start_time
 
 ```{r load-libraries}
 # Efficiently load with pacman
-pacman::p_load(tidyverse, dada2, phyloseq, DT, devtools, install = FALSE)
+pacman::p_load(tidyverse, dada2, phyloseq, DT, devtools, patchwork, install = FALSE)
 ```
 
 # Reading Raw Sequencing Files 
@@ -147,10 +155,10 @@ Above are plots showing the pre-QC quality scores of the raw sequencing data for
     
 3.	*Decline in Reverse Reads After ~185 Cycles/Bases:*
     - The quality in reverse reads declines more quickly than in forward reads.
-    - After ~185 bp, reverse reads show a drop below Q30. After ~220 bp, quality drops below Q25.
+    - After ~185 bp, reverse reads show a slight drop below Q30. After ~220 bp, quality drops below Q25.
     - After ~250bp, quality in reverse reads  continues to drop below Q20, indicating high sequencing error rates.
         - This is also what we observed in FastQC and MultiQC reports for half of the reads that I have in my dataset. The pre-QC plot created here using only reverse reads also proves that the decline in quality observed in MultiQC report was due to reverse reads.
-    - **Solution**: I will truncate the reverse reads using `truncLen = 185` to remove poor quality bases observed in reverse reads less than Q30 after position ~185 bp. 
+    - **Solution**: I will truncate the reverse reads using `truncLen = 210` to remove poor quality bases observed in reverse reads less than Q30 after position ~210 bp. 
     
 4.	*Forward Reads Also Show Decline in Quality After ~250 bp*
     - Forward reads degrade after ~260 cycles, but the quality drop is less severe than in reverse reads. 
@@ -193,10 +201,10 @@ head(filtered_reverse_reads)
 filtered_reads <- 
   filterAndTrim(fwd = forward_reads, filt = filtered_forward_reads,
               rev = reverse_reads, filt.rev = filtered_reverse_reads,
-              maxN = 0, maxEE = c(2,2), 
-              # Remove the bases after 260 and 185 in forward and reverse reads, respectively, with truncLen
-              truncLen = c(260, 185), 
-              truncQ = 2, rm.phix = TRUE, compress = TRUE, multithread = TRUE)
+              maxN = 0, maxEE = c(2, 2), 
+              # Remove the bases after 260 and 210 in forward and reverse reads, respectively, with truncLen, and primers and low quality bases at the beginning of the forward reads using trimLeft = c(22, 21) - fwd primer is 17 bp long, but there is also ~5 bases at the beginning of the fwd reads with slightly low quality so I trimmed 22 bp from the beginning of fwd reads.
+              truncLen = c(260, 210), trimLeft = c(22, 21), 
+              truncQ = 2, rm.phix = TRUE, compress = TRUE, multithread = 10)
 ```
 
 # Assess Trimmed Read Quality 
@@ -242,7 +250,6 @@ This post-QC quality score plot from 108 aggregated Illumina sequencing files sh
 
 - *Forward Reads Post-QC*
   - High-quality (Q30+) bases throughout most of the read length. 
-  - There are slightly low quality bases at position ~10bp. However, those bases were retained in the publication. That's why I also tend to keep them in my analysis as well since most of them seem to have quality scores >30. 
   - A slight decline after ~200 cycles but all the reads have quality score >30.
 - *Reverse Reads Post-QC*
   - Initial, mid- and end read qualities are >30.
@@ -283,7 +290,8 @@ numSeqs_QC_dotplot <-
   labs(x = "# of Raw Seqs", 
        y = "# of Seqs Retained") + 
   xlim(0, 400000) +
-  ylim(0,400000) +
+  ylim(0, 400000) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   # Now let's add a 1:1 line for reference of keeping 100% of the reads
   geom_abline(slope=1, intercept = 0, color = "deeppink")
 
@@ -293,7 +301,8 @@ numRetained_QC_histplot <-
   ggplot(aes(x = reads.out)) + 
   geom_histogram() + 
   labs(x = "# of Seqs Retained", 
-       y = "# of Samples") 
+       y = "# of Samples") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 # Create a histogram of percent reads retained in a histogram
 percSeqs_QC_histplot <- 
