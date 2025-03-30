@@ -1,2 +1,7 @@
 *.fastq
 .Rproj.user
+*.fastq.gz
+*/*.fastq.gz
+*/*/*.fastq.gz
+.Rproj.user
+.Rproj.user/**
