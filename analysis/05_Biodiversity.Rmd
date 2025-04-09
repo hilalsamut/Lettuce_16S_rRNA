@@ -1,0 +1,855 @@
+---
+title: "Biodiversity across different seasons and storage duration"
+author: "Hilal Samut"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      fig.align = "center",
+                      # Always relevant to the document directory 
+                      # send any figure output to this folder 
+                      fig.path = "../figures/05_Biodiversity/",
+                      warning = FALSE) 
+```
+
+# Goals 
+
+Run an analysis on the within-sample biodiversity of the samples in our project. 
+
+1. Calculate the Hill Numbers of the samples using the iNEXT package. 
+2. Plot and evaluate the interpolated and extrapolated rarefaction curves from iNEXT. 
+3. Analyze the Hill numbers as it relates to stations and salinity (in PSU).
+4. Test and then answer the scientific question at hand! (Remember, we're doing biology!)
+
+## Inputs 
+
+1. We will need the `phytree_preprocessed_physeq`, which includes a rooted tree (ideally within the archaea!) that we created in `analysis/04B_Phylogenetic_Tree_Inspection.Rmd`. 
+
+## Outputs 
+
+*This is an exciting analysis!!! We finally get to answer one of our scientific questions!*
+
+1. Calculated biodiversity measures (Hill numbers) across every sample. 
+2. Figures to include in our scientific paper that visualize the data as it relates to the scientific question.
+3. Statistical tests conveying the measured and quantified changes and patterns in biodiversity.
+
+# Scientific Question
+
+## Question & Hypotheses
+
+1. How does the microbial biodiversity in chopped Romaine lettuce change depending on harvest season? 
+
+ - *Null hypothesis:* The microbial biodiversity doesn't change with harvest season.
+
+ - *Alternative Hypothesis:* A rich microbial biodiversity is expected in chopped lettuce harvested in warmer seasons. 
+
+2. How does the microbial biodiversity in chopped Romaine lettuce change with storage duration of lettuce at the "Use by" date and five days after "Use by" date.
+
+ - *Null hypothesis:* The microbial biodiversity doesn't change with storage duration.
+
+ - *Alternative Hypothesis:* A rich microbial biodiversity is expected in chopped lettuce harvested in lettuce samples tested at five days after "Use by" date. 
+ 
+ 
+*Let's get to calculating Biodiversity!*
+
+# Set up the Environment 
+
+## Timing of this script
+
+```{r rmd-start}
+# What time did we start running this script? 
+start_time <- Sys.time()
+```
+
+## Set the seed 
+```{r set-seed}
+set.seed(238428)
+```
+
+## Load Packages & Colors 
+
+```{r load-packages-colors}
+# install packages for stats
+#install.packages("rstatix")
+#install.packages("ggpubr")
+
+pacman::p_load(tidyverse, devtools, patchwork, iNEXT, phyloseq,
+               # packages for stats
+               ggpubr, rstatix, install = FALSE)
+
+# Load in colors for plotting 
+source("code/colors.R")
+```
+
+## Load in Data 
+
+```{r load-data}
+load("data/04_PhylogeneticTree/phytree_preprocessed_physeqs.RData")
+
+# take a look at it! 
+midpoint_rooted_physeq
+
+# Intuition check on seq depth
+min(sample_sums(midpoint_rooted_physeq))
+
+# Make a metadata dataframe 
+metadata_df <- 
+  midpoint_rooted_physeq %>%
+  sample_data() %>%
+  data.frame()
+
+# view of it
+glimpse(metadata_df)
+```
+
+# Biodiversity Hill Numbers with iNEXT
+
+
+## Hill Number Equation
+
+Next, we will calculate the biodiversity with the [iNEXT package](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12613) package. iNEXT focuses on three measures of biodiversity via the Hill numbers. Hill numbers have the order q: 
+
+$$
+{}^qD = \left( \sum_{i=1}^{S} p_i^q \right)^{1/(1 - q)}, \quad q \geq 0, \quad q \neq 1.
+$$
+
+But when *q = 1*, then the equation is: 
+
+$$
+{}^1D = \lim_{q \to 1} {}^qD = \exp\left( - \sum_{i=1}^{S} p_i \log p_i \right) = \exp(H_{sh}).
+$$
+
+
+**Where:**
+
+- \( {}^qD \) is the *Hill number* or *diversity of order \( q \)*, a measure of species diversity.
+- \( q \) is the *order of diversity*, which determines how sensitive the measure is to species relative abundances:
+  - \( q = 0 \): all species are weighted equally or **species richness**,
+  - \( q = 1 \): corresponds to the exponential of **Shannon entropy**,
+  - \( q = 2 \): corresponds to the **inverse of Simpson’s index**.
+- \( S \) is the *total number of species* in the community.
+- \( p_i \) is the *relative abundance* of species \( i \), i.e., the proportion of individuals in the community belonging to species \( i \).
+
+## Microbial Example 🦠
+
+Imagine you're studying the microbial diversity in three sourdough starters from three different bakers: A, B, and C. Each one contains a mix of **ASVs**. *But how diverse are they, really?* Here,'s a great application of the **Hill numbers** to find out, varying the value of \( q \).
+
+### When \( q = 0 \): Counting *All* ASVs Equally  
+> *Species Richness* → \( {}^0D \)
+
+Here, we ignore how common or rare each ASV is. Every ASV counts equally — even ones that appear just once. For example, this is like walking into a library and simply counting how many unique book titles are on the shelves—not how many copies of each exist, just the number of different titles. So, even if there’s only one copy of most books and 100 copies of one, they all count the same. 
+
+Here, in the context of microbial communities, we are pondering: **“How many different ASVs are present?”** We do not weight them by abundance/evenness in any way. Rather, we focus on a binary measures of 0s and 1s that represent presence (1) and absence (0).
+
+- Baker A’s starter has 10 unique ASVs: \( {}^0D_{\text{A}} = 10 \)    
+- Baker B’s has 7 unique ASVs: \( {}^0D_{\text{B}} = 7 \)  
+- Baker C’s has 15 unique ASVs: \( {}^0D_{\text{C}} = 15 \)  
+
+
+### When \( q = 1 \): Balancing Rarity and Commonness  
+> *Shannon Diversity* → \( {}^1D \)
+
+Now we ask: **"How evenly are the ASVs distributed?"** Rare ASVs matter, but not as much as common ones. If we revisit the library analogy, now imagine you’re randomly picking books off the shelves to read. Some books have many more copies, so you’re more likely to pick those — but you still have a chance to encounter the rare ones. This measure reflects both richness and evenness — it tells you the effective number of “common” book titles based on their relative frequency. `q = 1` gives you a sense of how diverse your reading experience would be, considering popular vs. rare titles.
+
+- Baker A’s 10 ASVs are 90% dominated by just one ASV: \( {}^1D_{\text{A}} \approx 2 \)  
+- Baker B’s 7 ASVs are fairly even: \( {}^1D_{\text{B}} \approx 6.8 \)  
+- Baker C’s 15 ASVs include 3 very dominant ones: \( {}^1D_{\text{C}} \approx 5 \)  
+
+Even though Baker C and A have more ASVs in terms of richness in \( {}^0D \), **Baker B** has the highest \( {}^1D \) due to better balance between the abundances of its seven ASVs. 
+
+### When \( q = 2 \): Focus on the Most Abundant ASVs  
+> *Simpson-like Diversity* → \( {}^2D \)
+
+Now we modify our question to wonder: **How many ASVs dominate each sample?** Here, rare ASVs hardly matter. For example, this is like walking into the library and only noticing the most abundant book titles, because they take up entire shelves. The rare titles are barely visible. Therefore, this measure emphasizes dominant species—those with many copies. `q = 2` tells us the effective number of dominant book titles, downplaying the presence of rare ones.
+
+- Baker A’s starter is almost all one ASV of 10 total ASVs: \( {}^2D_{\text{A}} \approx 1.2 \)  
+- Baker B’s 7 ASVs are balanced: \( {}^2D_{\text{B}} \approx 6.5 \)   
+- Baker C’s has 3 dominant ASVs out of 15: \( {}^2D_{\text{C}} \approx 3.5 \)  
+
+This tells us: **Baker B** has the most diverse community in terms of its *dominant* community members.
+
+
+---
+
+## Hill Number Summary Table
+
+| Value of \( q \) | Emphasis                    | Hill Number \( {}^qD \) | Interpretation                              |
+|------------------|-----------------------------|-------------------------|----------------------------------------------|
+| \( q = 0 \)      | Every ASV counts equally     | \( {}^0D \)             | ASV richness — a simple count                |
+| \( q = 1 \)      | Balance of common & rare     | \( {}^1D \)             | Shannon Diversity — balanced view            |
+| \( q = 2 \)      | Dominant ASVs matter most    | \( {}^2D \)             | Simpson Diversity — focus on major players        |
+
+---
+
+So, hopefully you can see that using Hill numbers like \( {}^qD \) gives you a powerful, flexible way to describe microbial diversity — from just counting ASVs to understanding community structure. Next, we will calculate the biodiversity with the [iNEXT package](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12613) package. iNEXT focuses on three measures of biodiversity via the Hill numbers. For each Hill NUmber [iNEXT package](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12613) uses the observed abundance of species within a sample to compute diversity estimates and the associated 95% confidence intervals for the following two types of rarefaction and extrapolation (R/E):
+
+1. **Sample-size-based (or size-based) R/E curves**: iNEXT computes diversity estimates for
+rarefied and extrapolated samples up to an appropriate size (2x the total number of individuals/sequences in that sample). This type of sampling curve plots the diversity estimates with respect to sample size.
+2. **Coverage‐based R/E curves:** iNEXT computes diversity estimates for rarefied and extrapolated samples based on a standardized level of sample completeness (as measured by sample coverage) up to an appropriate coverage value. This type of sampling curve plots the diversity estimates with respect to sample coverage. **NOTE: Coverage is inapplicable to DADA2 datasets, as they lack singletons** (this is also why we can’t use Amy Willis’s breakaway approach). 
+
+*An important note:* We’ll be using the size_based output. Our lab has previously been suspicious of the Asymptotic Estimator. Therefore we will use the size_based approach here, with the caveat that we will very rigorously confirm that we’ve approached saturation for all of our samples! 
+
+
+> Warning! iNEXT takes a while to run, especially if your samples are deeply sequenced or if you have many samples! It is wise to calculate iNEXT early and then come back to the rest of the home work later on.
+
+```{r iNEXT-biodiversity}
+# prepare the input data 
+# Species in rows and the samples in columns 
+iNEXT_input_df <- 
+  midpoint_rooted_physeq %>%
+  otu_table() %>%
+  data.frame()
+
+# Inpect 
+dim(iNEXT_input_df)
+iNEXT_input_df[1:5, 1:5]
+
+# Run iNEXT 
+# Remember to set the seed!
+# ASVs in ROWs, samples in COLUMNS 
+iNEXT_data <- iNEXT(iNEXT_input_df, 
+                    q = c(0, 1, 2),
+                    datatype = "abundance")
+
+# Inspect 
+str(iNEXT_data)
+```
+
+# Rarefaction Curves 
+
+## `ggiNEXT` Rarefaction Curves 
+
+```{r iNEXT-colors}
+# Prepare Colors 
+color_df <- 
+  iNEXT_input_df %>%
+  colnames() %>%
+  data.frame()
+# Check
+head(color_df)
+# Rename the column 
+colnames(color_df)[1] <- "names"
+# Check
+head(color_df)
+
+
+# Make a helper dataframe for plotting with colors 
+iNEXT_color_df <- 
+  color_df %>%
+  # Fix the names for merging
+  # mutate(names = gsub(names, pattern = "[.]", replace = "-"),
+        # names = gsub(names, pattern = "X",  replace = "")) %>%
+  # Merge with metadata
+  left_join(metadata_df, by = "names") %>%
+  # Merge with colors for plotting with ggiNEXT
+  left_join(data.frame(season_colors = season_colors,
+            season_environment = names(season_colors)),
+            by = "season_environment")
+
+head(iNEXT_color_df)
+```
+
+```{r plot-iNEXT-rarefaction}
+ggiNEXT(iNEXT_data, type = 1, facet.var = "Order.q") + 
+  scale_color_manual(values = iNEXT_color_df$season_colors) + 
+  scale_fill_manual(values = iNEXT_color_df$season_colors) + 
+  scale_shape_manual(values = base::rep(17, nsamples(midpoint_rooted_physeq))) + 
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  labs(y = "Effective Number of ASVs", x = "Number of Sequences") 
+```
+
+Remembering that an Order q of:  
+
+  - 0 = Richness/ Number of Total taxa
+  - 1 = Exponential Shannon / Number of "Common" taxa
+  - 2 = Inverse Simpson / Number of "Dominant" taxa 
+  
+*Also note that iNEXT will extrapolate the number of sequences to double the sequencing depth of the sample!* This extrapolation is represented by the dotted line, which extends to 2 x the library size of the sample. 
+
+Let's draw some conclusions from the plot above:  
+
+1. The best gift of the Hill Numbers: *All three diversity measures are on the same x-axis: The Effective Number of Species or ASVs.*  
+2. As q increases from 0 to 1 to 2, the abundance of the species is weighted more, so the rarefaction curve plateaus earlier. This is important because it **indicates that richness is the most sensitive to sequencing depth!** However, Shannon and even less sensitive is Simpson.  
+3. Most of the sample rarefaction curves, except for richness, appear to plateau but we need to look deeper to truly confirm this.  
+
+Ok, this plot is nice, but since it's autogenerated with the `ggiNEXT` function, I'd like some more freedom to plot and explore the data further. Let's manually plot the data that we pull out from the iNEXT data.
+
+## Manual Rarefaction Curves 
+
+```{r manual-rarefaction}
+str(iNEXT_data)
+
+iNEXT_manual_df <- 
+  iNEXT_data$iNextEst$size_based %>%
+  dplyr::rename(names = Assemblage) %>%
+  # fix the samples to merge with metadata 
+  #mutate(names = gsub(names, pattern = "[.]", replace = "-"),
+        # names = gsub(names, pattern = "X", replace = "")) %>%
+  # join with the metadata
+  left_join(., metadata_df, by = "names") %>%
+  mutate(season_environment = factor(season_environment, levels = c("Early (Fall)",
+                                              "Late (Spring)")))
+
+# Inspection
+dim(iNEXT_manual_df)
+
+# Manually plot rarefaction curves 
+iNEXT_manual_df %>%
+  # Filter out rows that are calculated with actual sequences (no extrapolated)
+  dplyr::filter(Method == "Rarefaction") %>%
+  # Now, let's draw the plot! 
+  ggplot(aes(x = m, y = qD, color = season_environment, group = names)) + 
+  geom_line() + 
+  # Facet by station 
+  facet_grid(Order.q~season_environment, scales = "free") + 
+  scale_color_manual(values = season_colors) + 
+  theme_bw() + 
+  labs(y = "Effective Number of ASVs", x = "Number of Sequences") + 
+  theme(legend.position = "bottom")
+```
+
+<span style="color: red;">INTERPRETATION #1:  What can you conclude from the ggiNEXT and manual rarefaction curve plots? Are there "enough" sequences to analyze the samples? Is it valid to make any conclusions about species richness when q = 0? What about when q = 1? Or q = 2? Why or why not?</span>
+
+While the rarefaction curves from `ggiNEXT` agglomerated the data together, it was hard to see individual samples. Above, we can start to tease apart specific samples within each station, which can be done for any categorical variable. 
+
+From the manual rarefaction curve plots, we should analyze if the curves reach a plateau to deduce whether the sequencing depth is sufficient enough to make inferences about the diversity metrics. For richness (q=0), the curves do not seem to reach a plateau, while for Shannon (q=1) and Simpson's (q=2), we have rarefaction curves that reach plateau for many samples. Therefore, making conclusions about species richness (q=0) is not valid as species richness is very sensitive to rare species. For other diversity metric (q=1 and 2), we can draw valid conclusions, especially considering Simpson is the least sensitive to rare species. The richness, Shannon and Simpson diversity values are generally lower in lettuce samples harvested in late (spring) seasons.
+
+However, all of these changes are qualitative... let's actually quantify by running some stats!
+
+# Statistical Testing 
+
+So, how do we actually quantify the changes in biodiversity that we may observe between the samples? That takes us into statistics! 
+
+
+## Parametric vs. Non-Parametric Statistics??
+
+Understanding the difference between **parametric** and **non-parametric** statistics is essential for choosing the right test for your data, especially in microbial ecology where data often violate assumptions of normality.
+
+*So, what's the difference between the two?*
+
+| Feature                     | Parametric                                | Non-Parametric                          |
+|----------------------------|--------------------------------------------|-----------------------------------------|
+| **Assumptions**            | Assumes a known distribution (usually normal) | Fewer assumptions about distribution    |
+| **Data Type**              | Continuous (interval/ratio)                | Ordinal or non-normal continuous        |
+| **Examples**               | t-test, ANOVA, linear regression           | Wilcoxon, Kruskal-Wallis, Spearman      |
+| **Estimates Based On**     | Parameters like mean and variance          | Ranks or medians                        |
+| **Sensitive to Outliers?**| Yes                                        | Less sensitive                          |
+| **Statistical Power**      | Higher if assumptions are met              | Lower but more robust to violations     |
+
+### Parametric Statistics
+
+Parametric tests assume that the data follow a specific distribution (usually a normal/Gaussian distribution). They are more statistically powerful **if those assumptions are met**. Some examples include, comparing means with a t-test or ANOVA or modeling relationships using linear regression. 
+
+```
+# Example t-test on alpha diversity between two treatment groups (Shannon index)
+t.test(shannon ~ treatment, data = my_data)
+```
+
+### Non-Parametric Statistics
+
+Non-parametric tests do not assume a specific data distribution and are more robust to outliers. However, they are less robust compared to parametric statistics because of this flexibility. Some examples include wilcoxon tests to compare diversity between sample types. Non-parametric tests are ideal when:
+
+- Data are skewed or non-normal
+- Sample sizes are small
+- Outliers are present
+- You’re analyzing ranks (*e.g.,* ordinal data) or medians
+
+```
+# Example Wilcoxon test on alpha diversity between two treatment groups (Shannon index)
+wilcox.test(shannon ~ treatment, data = my_data)
+```
+
+## How do I test if my data is "normal"? 
+
+Typically people perform a **Shapiro-Wilk Test** on their data. The Shapiro-Wilk test is a statistical test used to check whether a sample of data comes from a normally distributed population.
+
+The Shapiro-Wilk test calculates a **W statistic** by comparing the order statistics (sorted values) of your data with those expected from a normal distribution.
+
+- **W ≈ 1** → data is close to normal.
+- **W < 1** → increasing deviation from normality.
+
+What hypothses does the Shapiro-Wilk Test? 
+
+- *Null hypothesis (H₀):* The data are normally distributed.
+    - *p-value > 0.05*: Fail to reject H₀ and the data appears normal.
+- *Alternative hypothesis (H₁):* The data are *not* normally distributed.
+    - *p-value < 0.05*: We can reject the H₀, which will indicate that the data is **not normal**.
+
+
+**How to run the Shapiro-Wilk test?**
+
+
+*Run Shapiro-Wilk for Salinity*
+
+```{r shapiro-wilk-salinity, eval=FALSE}
+#distinct_metadata_df <- 
+  #metadata_df %>%
+  # There are some redundant samples, let's remove them
+  #dplyr::filter(fraction == "Whole") 
+
+# Test of the data is normal for the continuous value of salinity
+#shapiro.test(metadata_df$salinity_psu)
+```
+
+I cannot run the above test for my data as I don't have continuous data.
+
+
+*Is the richness data normal?*
+
+```{r shapiro-wilk-richness}
+### Now what about for richness? 
+obs_div_df <- 
+  iNEXT_manual_df %>%
+  dplyr::filter(Method == "Observed") 
+
+# check it
+glimpse(obs_div_df)
+
+# Pull out unique data from the three fractions of samples 
+obs_whole_rich_df <- 
+  obs_div_df %>%
+  #dplyr::filter(fraction == "Whole") %>%
+  dplyr::filter(Order.q == 0)
+
+# Test of the data is normal for the continuous value of richness
+shapiro.test(obs_whole_rich_df$qD)
+```
+
+**YES!** The diversity data IS normal. This means that when we run these tests, we can use parametric tests that assume normality of our data. :) This makes our statistical testing a lot more robust. Therefore, we can use ANOVA! 
+
+## Statistics in Microbial Ecology
+
+Generally speaking, we tend to use non-parametric tests in microbial ecology. It's safer to go this way. However, if there is a test performed to show that the data is normally distributed, then we can access the robustness of parametric tests! 
+
+| **Research Question**                        | **Parametric Test**       | **Non-Parametric Test**       |
+|---------------------------------------------|----------------------------|-------------------------------|
+| Compare alpha diversity (2 groups)          | t-test                     | Wilcoxon rank-sum test        |
+| Compare alpha diversity (more than 2 groups)| ANOVA                      | Kruskal-Wallis test           |
+| Correlate diversity with environmental data | Pearson correlation        | Spearman correlation          |
+| Test differences in beta diversity          | *Not applicable* (uses distance matrices) | PERMANOVA (non-parametric)  |
+| Model transformed taxon abundances          | Linear regression, GLM     | Rank-based regression         |
+
+**Takeaways about statistics**
+
+- **Parametric statistics** use data values directly (means, variances) and are more powerful when assumptions (*e.g.,* normality, homoscedasticity) are met.
+- **Non-parametric statistics** use ranks and are more powerful when there are violations of assumptions that are made in parametric statistics, making them a safer choice for skewed, sparse, or ordinal data, which is commonplace in microbial ecology. 
+- In microbial ecology, non-parametric methods are commonly used due to the nature of microbiome data (*e.g.,* zero-inflated, non-normal, compositional), but **parametric tests are absolutely valid** when assumptions are met or appropriate transformations are applied.
+
+Choose your statistical approach based on the:
+
+- Type and distribution of your data
+- Question you're asking
+- Assumptions your data can reasonably meet
+
+
+# Categorical Analysis: 2 or more groups 
+
+
+### Diversity by Season
+
+```{r make-obs-df}
+# Plot boxplots by season against diversity
+obs_div_df %>%
+  ggplot(aes(x = season_environment, y = qD, fill = season_environment, 
+             color = season_environment)) + 
+  facet_wrap(.~Order.q, scales = "free_y") + 
+  geom_jitter() + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+```
+
+
+#### Statistically test Richness
+
+
+```{r season-diversity-richness, fig.height=4, fig.width=4}
+# Pull out richness data 
+obs_rich_df <- 
+  obs_div_df %>%
+  dplyr::filter(Order.q == 0)
+
+# Calculate the ANOVA since the data is normal. :) 
+anova_season_rich <- 
+  aov(qD ~ season_environment, data = obs_rich_df)
+
+# Look at it 
+anova_season_rich
+summary(anova_season_rich)
+
+# Richness by season 
+rich_ggboxplot <- 
+  ggboxplot(obs_rich_df, x = "season_environment", y = "qD", 
+          color = "season_environment", fill = "season_environment", alpha = 0.3,
+          outlier.shape = NA) + 
+  # Add points
+  geom_jitter(aes(color = season_environment)) + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+  labs(y = "# of Total ASVs (Richness)") + 
+  # Add ANOVA & Tukey
+  stat_compare_means(method = "anova", label.y = 65) +  # ANOVA p-value
+  geom_pwc(
+    aes(group = season_environment), tip.length = 0, hide.ns = TRUE,
+    method = "t_test", label = "p.adj.format",
+    step.increase = 0.08,
+    p.adjust.method = "fdr", bracket.nudge.y = -0.08) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+
+
+```
+
+
+#### Simpson
+
+```{r season-diversity-simpson, fig.height=4, fig.width=4}
+# Pull out simpson data 
+obs_simps_df <- 
+  obs_div_df %>%
+  dplyr::filter(Order.q == 2)
+
+# Calculate the ANOVA since the data is normal. :) 
+anova_season_simps <- 
+  aov(qD ~ season_environment, data = obs_simps_df)
+
+# Look at it 
+anova_season_simps
+summary(anova_season_simps)
+
+# Simpson by season 
+simps_ggboxplot <- 
+  ggboxplot(obs_simps_df, x = "season_environment", y = "qD", 
+          color = "season_environment", fill = "season_environment", alpha = 0.3,
+          outlier.shape = NA) + 
+  # Add points
+  geom_jitter(aes(color = season_environment)) + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+  labs(y = "# of Dominant ASVs (Simpson)") +
+  # Add ANOVA & Tukey
+  stat_compare_means(method = "anova", label.y = 30) +  # ANOVA p-value
+  geom_pwc(
+    aes(group = season_environment), tip.length = 0, hide.ns = TRUE,
+    method = "t_test", label = "p.adj.signif",
+    step.increase = 0.08,
+    p.adjust.method = "fdr", bracket.nudge.y = -0.08) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+```
+
+```{r plot-rich-simps-season, fig.width=8, fig.height=4}
+# Show the plots
+rich_ggboxplot + simps_ggboxplot
+```
+
+
+### Diversity by Storage Duration
+
+```{r make-obs-df}
+# Plot boxplots by storage duration against diversity
+obs_div_df %>%
+  ggplot(aes(x = Sampling_point, y = qD, fill = Sampling_point, 
+             color = Sampling_point)) + 
+  facet_wrap(.~Order.q, scales = "free_y") + 
+  geom_jitter() + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+```
+
+
+#### Statistically test Richness
+
+
+```{r season-diversity-richness, fig.height=4, fig.width=4}
+# Pull out richness data 
+obs_rich_df <- 
+  obs_div_df %>%
+  dplyr::filter(Order.q == 0)
+
+# Calculate the ANOVA since the data is normal. :) 
+anova_storage_rich <- 
+  aov(qD ~ Sampling_point, data = obs_rich_df)
+
+# Look at it 
+anova_storage_rich
+summary(anova_storage_rich)
+
+# Richness by season 
+rich_ggboxplot <- 
+  ggboxplot(obs_rich_df, x = "Sampling_point", y = "qD", 
+          color = "Sampling_point", fill = "Sampling_point", alpha = 0.3,
+          outlier.shape = NA) + 
+  # Add points
+  geom_jitter(aes(color = Sampling_point)) + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+  labs(y = "# of Total ASVs (Richness)") + 
+  # Add ANOVA & Tukey
+  stat_compare_means(method = "anova", label.y = 65) +  # ANOVA p-value
+  geom_pwc(
+    aes(group = Sampling_point), tip.length = 0, hide.ns = TRUE,
+    method = "t_test", label = "p.adj.format",
+    step.increase = 0.08,
+    p.adjust.method = "fdr", bracket.nudge.y = -0.08) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+
+
+```
+
+
+#### Simpson
+
+```{r season-diversity-simpson, fig.height=4, fig.width=4}
+# Pull out simpson data 
+obs_simps_df <- 
+  obs_div_df %>%
+  dplyr::filter(Order.q == 2)
+
+# Calculate the ANOVA since the data is normal. :) 
+anova_storage_simps <- 
+  aov(qD ~ Sampling_point, data = obs_simps_df)
+
+# Look at it 
+anova_storage_simps
+summary(anova_storage_simps)
+
+# Simpson by season 
+simps_ggboxplot <- 
+  ggboxplot(obs_simps_df, x = "Sampling_point", y = "qD", 
+          color = "Sampling_point", fill = "Sampling_point", alpha = 0.3,
+          outlier.shape = NA) + 
+  # Add points
+  geom_jitter(aes(color = Sampling_point)) + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+  labs(y = "# of Dominant ASVs (Simpson)") +
+  # Add ANOVA & Tukey
+  stat_compare_means(method = "anova", label.y = 30) +  # ANOVA p-value
+  geom_pwc(
+    aes(group = Sampling_point), tip.length = 0, hide.ns = TRUE,
+    method = "t_test", label = "p.adj.signif",
+    step.increase = 0.08,
+    p.adjust.method = "fdr", bracket.nudge.y = -0.08) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+```
+
+```{r plot-rich-simps-storage, fig.width=8, fig.height=4}
+# Show the plots
+rich_ggboxplot + simps_ggboxplot
+```
+
+<span style="color: red;">INTERPRETATION #2:  If you have categorical data, what can you conclude regarding the role that all ASVs (richess, q = 0) versus common ASVs (Shannon, q = 1) versus dominant ASVs (Simpson, q = 2) have on the biodiversity of your samples as it relates to your variable of interest?</span>: 
+
+<span style="color: red;">INTERPRETATION #3:  How did you statistically test your scientific question in Interpretation #2? Why?</span>
+
+
+# Continuous Relationships - Salinity (PSU) vs Biodiversity
+
+
+## Spearman vs. Linear Model: What’s the Difference?
+
+| Feature                  | **Spearman Correlation**                           | **Linear Model (`lm()`)**                               |
+|--------------------------|----------------------------------------------------|----------------------------------------------------------|
+| **Type of Relationship** | Monotonic (increasing or decreasing)              | Linear (straight-line relationship)                      |
+| **Assumptions**          | Non-parametric (no distribution assumptions)      | Parametric (normality, linearity, homoscedasticity)      |
+| **Input Data**           | Ordinal, ranked, or continuous                    | Continuous (can include categorical predictors too)      |
+| **What it Measures**     | Strength and direction of monotonic relationship  | Effect size, direction, significance of predictors        |
+| **Output**               | Correlation coefficient (ρ) and p-value           | Intercept, slope(s), p-values, R², residuals, etc.       |
+| **Resistant to Outliers?** | More robust                                     | Sensitive to outliers                                    |
+| **Function in R**        | `cor.test(x, y, method = "spearman")`             | `lm(y ~ x)`                                              |
+
+
+## Environmental Variables 
+
+```{r environ-check, eval=FALSE}
+# Create dataframe of environmental variables 
+env_df <- 
+  metadata_df %>%
+  dplyr::select(names, water_tempC:DO_mgL)
+
+# Pair-wise interactions between env var
+pairs(dplyr::select(env_df, -names), upper.panel = NULL)
+```
+
+
+## Continuous Variable—Practical Salinity Units: PSU 
+
+A **Practical Salinity Unit** is equal to:  
+
+- 1 PSU = 1 g salt per 1,000 g water = 1 ppt
+
+PSU ranges between 0 and >30, where: 
+
+- Freshwater: 0-0.5
+- Brackish: 0.5 - 30
+- Marine: >30
+
+```{r plot-div-salinity-lm, fig.width=7, fig.height=3.5, eval=FALSE}
+# How does biodiversity change over the salinity gradient?
+obs_div_df %>%
+  ggplot(aes(x = salinity_psu, y = qD)) + 
+  facet_wrap(.~Order.q, scales = "free") + 
+  geom_point(aes(color = station)) + 
+  scale_color_manual(values = station_colors) + 
+  labs(x = "Salinity (PSU)", y = "Effective Number of ASVs") +
+  stat_smooth(method = "lm", formula = y ~poly(x, 2)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
+```
+
+
+Here, there appears to be a few different results: 
+
+- There appears to be a negative & linear relationship between salinity and Richness. This indicates that freshwaters have the highest number of ASVs (genearlly around ~150 ASVs) and as we gain more and more salt in the water, there are fewer species (closer to ~110 ASVs)! We will test this more below. :)  
+- Taking the Richness relationship above, we also need to note that there seems to be a high amount of variability within the brackish samples, 
+- Shannon & Simpson diversity appear to have a "U" shaped diversity curve!  
+- The "U" shape indicates that diversity measures that also weight relative abundance (common and dominant taxa) is highest at the two ends of the spectrum... this indicates that there are fewer dominant species in brackish waters.  
+
+### Explore Richness More
+
+```{r richness-vs-salinity, eval=FALSE}
+# Make a richness data frame
+richness_df <- 
+  obs_div_df %>%
+  dplyr::filter(Method == "Observed") %>%
+  dplyr::filter(Order.q == 0)
+
+# Actually run the linear model
+rich_vs_sal_lm <- 
+  lm(qD ~ salinity_psu, data = richness_df)
+
+# Show me the model results
+rich_vs_sal_lm
+
+# Type?
+class(rich_vs_sal_lm)
+
+# Summary of lm
+summary(rich_vs_sal_lm)
+```
+
+In the output:
+
+- **Coefficients** refer to the 𝛽’s
+- **Estimate** is the estimate of each coefficient
+- **Std. Error** is the standard error of the estimate
+- **t value** is the coefficient divided by its standard error
+- **Pr(>|t|)** is the p-value for the coefficient
+- The **residual standard error** is the estimate of the variance of 𝜖
+- **Degrees of freedom** is the sample size minus # of coefficients estimated
+- **R-squared** is (roughly) the proportion of variance in the outcome explained by the model, instead we should always report the **adjusted R-squared**, which takes into penalizes the addition of unnecessary predictors, which provides a more accurate measure of model fit.
+    - Note that the R-squared value will always increase/stay the same when you add more predictors, even if they are not relevant!
+- The **F-statistic** compares the fit of the model as a whole to the null model (with no covariates)
+    - When comparing models, we always want to take the model with the higher F-statistic because it indicates a stronger relationship between the predictor varaibles and the dependent variables, suggesting that the model is better. 
+
+
+```{r plot-richness-sal, fig.height=4, fig.width=4, warning = FALSE, eval=FALSE}
+richness_df %>% 
+  ggplot(aes(x = salinity_psu, y = qD)) + 
+  geom_point(aes(color = station)) + 
+  stat_smooth(method = "lm") + 
+  labs(x = "Salinity (PSU)", y = "# of ASVs") + 
+  scale_color_manual(values = station_colors) + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) + 
+  geom_label(aes(x = 20, y = 60), hjust = 0, 
+             label = paste("Adj R2 = ",signif(summary(rich_vs_sal_lm)$adj.r.squared, 2),
+                           "\nIntercept =",signif(rich_vs_sal_lm$coef[[1]],3),
+                           " \nSlope =",signif(rich_vs_sal_lm$coef[[2]], 2),
+                           " \nP =",signif(summary(rich_vs_sal_lm)$coef[2,4], 2)))
+```
+
+
+## Spearman Correlation
+
+
+```{r rich-vs-salinity-spearman, fig.width=4, fig.height=4, eval=FALSE}
+richness_df %>% 
+  ggplot(aes(x = salinity_psu, y = qD)) + 
+  geom_point(aes(color = station)) + 
+  stat_smooth(method = "lm") + 
+  labs(x = "Salinity (PSU)", y = "# of ASVs") + 
+  scale_color_manual(values = station_colors) + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) + 
+  stat_cor(method = "spearman", label.x = 3, label.y = 30)  # customize label position
+```
+
+<span style="color: red;">INTERPRETATION #4:  If you have continuous data, what can you conclude regarding the role that all ASVs (richess, q = 0) versus common ASVs (Shannon, q = 1) versus dominant ASVs (Simpson, q = 2) have on the biodiversity of your samples as it relates to your variable of interest?</span>
+
+<span style="color: red;">INTERPRETATION #5:  How did you statistically test your scientific question in Interpretation #4? Why?</span>
+
+
+
+# Final info for Reproducibility 
+
+## Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
+
+## Session Information
+
+```{r session-info}
+# Ensure reproducibility with package version information
+devtools::session_info()
+```
