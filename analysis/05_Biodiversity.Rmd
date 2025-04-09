@@ -463,7 +463,7 @@ Choose your statistical approach based on the:
 
 ### Diversity by Season
 
-```{r make-obs-df}
+```{r make-obs-df-season}
 # Plot boxplots by season against diversity
 obs_div_df %>%
   ggplot(aes(x = season_environment, y = qD, fill = season_environment, 
@@ -488,21 +488,21 @@ obs_div_df %>%
 
 ```{r season-diversity-richness, fig.height=4, fig.width=4}
 # Pull out richness data 
-obs_rich_df <- 
+obs_richSeason_df <- 
   obs_div_df %>%
   dplyr::filter(Order.q == 0)
 
 # Calculate the ANOVA since the data is normal. :) 
 anova_season_rich <- 
-  aov(qD ~ season_environment, data = obs_rich_df)
+  aov(qD ~ season_environment, data = obs_richSeason_df)
 
 # Look at it 
 anova_season_rich
 summary(anova_season_rich)
 
 # Richness by season 
-rich_ggboxplot <- 
-  ggboxplot(obs_rich_df, x = "season_environment", y = "qD", 
+rich_ggboxplot_season <- 
+  ggboxplot(obs_richSeason_df, x = "season_environment", y = "qD", 
           color = "season_environment", fill = "season_environment", alpha = 0.3,
           outlier.shape = NA) + 
   # Add points
@@ -532,21 +532,21 @@ rich_ggboxplot <-
 
 ```{r season-diversity-simpson, fig.height=4, fig.width=4}
 # Pull out simpson data 
-obs_simps_df <- 
+obs_simpsSeason_df <- 
   obs_div_df %>%
   dplyr::filter(Order.q == 2)
 
 # Calculate the ANOVA since the data is normal. :) 
 anova_season_simps <- 
-  aov(qD ~ season_environment, data = obs_simps_df)
+  aov(qD ~ season_environment, data = obs_simpsSeason_df)
 
 # Look at it 
 anova_season_simps
 summary(anova_season_simps)
 
 # Simpson by season 
-simps_ggboxplot <- 
-  ggboxplot(obs_simps_df, x = "season_environment", y = "qD", 
+simps_ggboxplot_season <- 
+  ggboxplot(obs_simpsSeason_df, x = "season_environment", y = "qD", 
           color = "season_environment", fill = "season_environment", alpha = 0.3,
           outlier.shape = NA) + 
   # Add points
@@ -571,13 +571,13 @@ simps_ggboxplot <-
 
 ```{r plot-rich-simps-season, fig.width=8, fig.height=4}
 # Show the plots
-rich_ggboxplot + simps_ggboxplot
+rich_ggboxplot_season + simps_ggboxplot_season
 ```
 
 
 ### Diversity by Storage Duration
 
-```{r make-obs-df}
+```{r make-obs-df-storage}
 # Plot boxplots by storage duration against diversity
 obs_div_df %>%
   ggplot(aes(x = Sampling_point, y = qD, fill = Sampling_point, 
@@ -600,23 +600,23 @@ obs_div_df %>%
 #### Statistically test Richness
 
 
-```{r season-diversity-richness, fig.height=4, fig.width=4}
+```{r storage-diversity-richness, fig.height=4, fig.width=4}
 # Pull out richness data 
-obs_rich_df <- 
+obs_richStorage_df <- 
   obs_div_df %>%
   dplyr::filter(Order.q == 0)
 
 # Calculate the ANOVA since the data is normal. :) 
 anova_storage_rich <- 
-  aov(qD ~ Sampling_point, data = obs_rich_df)
+  aov(qD ~ Sampling_point, data = obs_richStorage_df)
 
 # Look at it 
 anova_storage_rich
 summary(anova_storage_rich)
 
-# Richness by season 
-rich_ggboxplot <- 
-  ggboxplot(obs_rich_df, x = "Sampling_point", y = "qD", 
+# Richness by storage 
+rich_ggboxplot_storage <- 
+  ggboxplot(obs_richStorage_df, x = "Sampling_point", y = "qD", 
           color = "Sampling_point", fill = "Sampling_point", alpha = 0.3,
           outlier.shape = NA) + 
   # Add points
@@ -644,23 +644,23 @@ rich_ggboxplot <-
 
 #### Simpson
 
-```{r season-diversity-simpson, fig.height=4, fig.width=4}
+```{r storage-diversity-simpson, fig.height=4, fig.width=4}
 # Pull out simpson data 
-obs_simps_df <- 
+obs_simpsStorage_df <- 
   obs_div_df %>%
   dplyr::filter(Order.q == 2)
 
 # Calculate the ANOVA since the data is normal. :) 
 anova_storage_simps <- 
-  aov(qD ~ Sampling_point, data = obs_simps_df)
+  aov(qD ~ Sampling_point, data = obs_simpsStorage_df)
 
 # Look at it 
 anova_storage_simps
 summary(anova_storage_simps)
 
-# Simpson by season 
-simps_ggboxplot <- 
-  ggboxplot(obs_simps_df, x = "Sampling_point", y = "qD", 
+# Simpson by storage 
+simps_ggboxplot_storage <- 
+  ggboxplot(obs_simpsStorage_df, x = "Sampling_point", y = "qD", 
           color = "Sampling_point", fill = "Sampling_point", alpha = 0.3,
           outlier.shape = NA) + 
   # Add points
@@ -685,12 +685,29 @@ simps_ggboxplot <-
 
 ```{r plot-rich-simps-storage, fig.width=8, fig.height=4}
 # Show the plots
-rich_ggboxplot + simps_ggboxplot
+rich_ggboxplot_storage + simps_ggboxplot_storage
 ```
 
 <span style="color: red;">INTERPRETATION #2:  If you have categorical data, what can you conclude regarding the role that all ASVs (richess, q = 0) versus common ASVs (Shannon, q = 1) versus dominant ASVs (Simpson, q = 2) have on the biodiversity of your samples as it relates to your variable of interest?</span>: 
 
-<span style="color: red;">INTERPRETATION #3:  How did you statistically test your scientific question in Interpretation #2? Why?</span>
+For **Seasonal effects**,
+
+- Richness (q=0): Early (Fall) samples have higher ASV richness compared to Late (Spring) ones, which means more unique ASVs were detected in Fall samples. Seasonal differences seem to affect rare species presence and Fall season has more diverse but possibly rare microbial communities.
+
+- Shannon (q = 1): Similar to Richness, Early (Fall) has higher diversity than Late (Spring), though the difference is slightly reduced between these seasons. Shannon index accounts for both richness and evenness, so this tells us Fall also had a more even distribution of common ASVs.
+
+- Simpson (q = 2): The difference between Fall and Spring is still present but further diminished compared to other metrics. Simpson index weighs dominant taxa, so this suggests that dominant species were similar across seasons, though still more diverse in Fall.
+
+For **Storage duration**,
+
+- Richness (q=0): Use by date (UBD) samples tend to have sligltly higher richness than five days after use by date (UBD5). However, the difference is not very strong. Lettuce samples stored beyond their use by date may have slightly lower microbial richness, possibly due to die-off or degradation.
+
+- Shannon (q = 1): UBD5 samples have slightly higher Shannon diversity than UBD. Storage beyond use by date appears to increase the diversity of common ASVs, perhaps due to growth of a more balanced community as some microbes die and the number of others inflates.
+
+- Simpson (q = 2): Similar to Shannon, UBD5 samples shows higher Simpson diversity compared to UBD. The community of lettuce smaples becomes more even by a few taxa 5 days beyond the use by date, suggesting a shift in the microbial community where no single group outcompetes others better.
+
+<span style="color: red;">INTERPRETATION #3:  How did you statistically test your scientific question in Interpretation #2? Why?</span>: I used one-way ANOVA separately to statistically test whether storage duration (UBD vs UBD5) and harvest season (Early (Fall) vs Late (Spring)) have an effect on (i) richness (q = 0) and Simpson diversity index (q = 2). 
+
 
 
 # Continuous Relationships - Salinity (PSU) vs Biodiversity
