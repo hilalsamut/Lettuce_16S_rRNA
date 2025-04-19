@@ -501,8 +501,8 @@ sorensen_season_adonis_margin
 
 So, as it applies to the Sorensen Dissimilarity, we can already draw a few conclusions about our data! We can state that: 
 
-1. **Harvesting season** is the strongest factor, explaining ~`r round(sorensen_season_adonis_terms2$R2[1]*100, digits = 0)`% of the variation in microbial community composition, which is statistically significant based on the p-value of <`r sorensen_station_adonis_terms2$"Pr(>F)"[1]`. This suggests temporal differences among seasons (i.e. eraly and late) play a major role in structuring the community.
-2. **Storage duration** also seems to contribute significantly (~`r round(sorensen_season_adonis_terms2$R2[2]*100, digits = 0)`% of variation, with a p-value of <`r sorensen_station_adonis_terms1$"Pr(>F)"[2]`). However, it doesn't explain too much variation.
+1. **Harvesting season** is the strongest factor, explaining ~`r round(sorensen_season_adonis_terms2$R2[1]*100, digits = 0)`% of the variation in microbial community composition, which is statistically significant based on the p-value of <`r sorensen_season_adonis_terms2$"Pr(>F)"[1]`. This suggests temporal differences among seasons (i.e. eraly and late) play a major role in structuring the community.
+2. **Storage duration** also seems to contribute significantly (~`r round(sorensen_season_adonis_terms2$R2[2]*100, digits = 0)`% of variation, with a p-value of <`r sorensen_season_adonis_terms2$"Pr(>F)"[2]`). However, it doesn't explain too much variation.
 3.	The **interaction between season and storage duration** explains an additional ~`r round(sorensen_season_adonis_terms2$R2[3]*100, digits = 0)`% of the variation, with a insignificant pvalue of <`r sorensen_season_adonis_terms2$"Pr(>F)"[3]`, meaning that community change over season is uniform across storage durations.
 4. Finally, the total residiuals of the model is ~`r round(sorensen_season_adonis_terms2$R2[4]*100, digits = 0)`% of the variation remains unexplained by these variables, which is higher than 85%.
 
@@ -643,7 +643,7 @@ permutest(dispr_bray_Sampling_point)
 
 The **Bray-Curtis** results are not in complete agreement with the Sorensen results. 
 
-Harvest season is has a significant `betadisper()/permutest()` result. Therefore, we cannot conclude for certain that our PERMANOVA results are truly because of harvest season for bray-curtis. 
+Harvest season has a significant `betadisper()/permutest()` result. Therefore, we cannot conclude for certain that our PERMANOVA results are truly because of harvest season for bray-curtis. 
 Harvest season might have some biological difference in the variance, which means that we need to be careful in our PERMANOVA interpretations. 
 
 # Interpreting PERMANOVA with Betadisper
@@ -676,8 +676,30 @@ If this happens, the results could be written something like: "*PERMANOVA indica
 
 <span style="color: red;">INTERPRETATION #6: Using the above example to guide you, run the appropriate betadisper() and permutest() for your scientific question and interpret the results. What biological conclusion can you draw from your dispersion analysis?</span>
 
+**Sorensen:**
+
+- **Harvest season** does not have a significant `betadisper()/permutest()` result. Therefore, we can conclude that our PERMANOVA results are more likely because of seasonal effects. 
+- **Storage Duration** does not have a significant `betadisper()/permutest()` result. Therefore, the PERMANOVA results likely represent a true difference by storage. 
+
+The **Bray-Curtis** results are not in complete agreement with the Sorensen results. 
+
+Harvest season has a significant `betadisper()/permutest()` result. Therefore, we cannot conclude for certain that our PERMANOVA results are truly because of harvest season for bray-curtis. 
+Harvest season might have some biological difference in the variance, which means that we need to be careful in our PERMANOVA interpretations. 
+
 <span style="color: red;">INTERPRETATION #7: Taking into account both the betadisper()/permutest() and the PERMANOVA (adonis2()) test that you ran, what biological conclusion can you draw regarding your data?</span>
 
+**Sorensen**
+- Both harvest season and storage duration showed significant differences in community composition by PERMANOVA. 
+- Critically, `betadisper()` results were not significant for either factor, indicating no difference in within-group dispersion. 
+This suggests that PERMANOVA results for Sorensen likely reflect true shifts in community composition (i.e., which taxa are present or absent), and not artifacts of group variability.
+*Biological conclusion*: Seasonal shifts in microbial community (species turnover) are robust. This suggests that harvest season influences which ASVs are present on Romaine lettuce, potentially driven by environmental conditions.
+
+**Bray-Curtis**
+- PERMANOVA again showed significant effects for harvest season and storage duration.
+- However, `betadisper()` was significant for harvest season, indicating heterogeneity of dispersion across seasonal groups.
+This means that the PERMANOVA result for harvest season using Bray-Curtis may be partially influenced by greater variability within one season, not just differences in centroid (mean community structure).
+- Storage duration, on the other hand, did not show significant dispersion differences.
+*Biological conclusion*: While Bray-Curtis suggests that abundance profiles differ by season, caution is needed. The difference may be driven not just by shifts in dominant taxa, but also by uneven community variability across seasons. In contrast, the abundance-based effect of storage duration appears robust.
 
 # 6. Visualize Community Dissimilarity with Ordination
 
