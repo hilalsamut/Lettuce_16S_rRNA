@@ -557,9 +557,9 @@ So, as it applies to the Sorensen Dissimilarity, we can already draw a few concl
 
 Community composition is influenced by season in both models. This suggests that both abundance and species turnover play a major role in structuring microbial communities in this system over season.
 
-
 <span style="color: red;">INTERPRETATION #5: Using the above example to guide you, run the appropriate PERMANOVA for your scientific question and interpret the results. What biological conclusion can you draw from your PERMANOVA results?</span>
 
+Both the composition and relative abundance of microbial communities on chopped Romaine lettuce are shaped by harvest season. This indicates that environmental conditions at harvest influence not only which microbes colonize the lettuce but also how dominant those microbes become. While storage duration contributes to community change, its effects are consistent across seasons. Together, these results suggest that both species turnover (presence/absence) and abundance drive seasonal microbial dynamics in postharvest lettuce microbiota.
 
 # 5b. Betadisper: Testing Variances/Dispersions
 
@@ -620,9 +620,8 @@ Interpreting `betadisper()/permutest()` results:
 
 **Sorensen:**
 
-- **Station** has a significant `betadisper()/permutest()` result. Therefore, we cannot conclude for certain that our PERMANOVA results are truly because of station. That said, we might expect that freshwater or saline system will have more/less dispersion for ecological reasons. Biology can also determine the dispersion. So, not all is lost! 
-- **Date** does not have a significant `betadisper()/permutest()` result. Therefore, the PERMANOVA results likely represent a true difference by date.  
-- **Salinity_psu** does not have a significant `betadisper()/permutest()` result and we can also trust that the PERMANOVA results are real. 
+- **Harvest season** does not have a significant `betadisper()/permutest()` result. Therefore, we can conclude that our PERMANOVA results are more likely because of seasonal effects. 
+- **Storage Duration** does not have a significant `betadisper()/permutest()` result. Therefore, the PERMANOVA results likely represent a true difference by storage.  
 
 ## Bray-Curtis
 
@@ -642,10 +641,10 @@ permutest(dispr_bray_Sampling_point)
 #permutest(dispr_bray_salinity)
 ```
 
-The **Bray-Curtis** results are actually in complete agreement with the Sorensen results. So, we can draw the same conclusions that: 
+The **Bray-Curtis** results are not in complete agreement with the Sorensen results. 
 
-1. Station likely has some biological difference in the variance, which means that we need to be careful in our PERMANOVA interpretations. 
-2. salinity_psu and date both have homogeneity of variances, meaning that we can put more trust into the differences in the centroids that we discovered in the PERMANOVA results! 
+Harvest season is has a significant `betadisper()/permutest()` result. Therefore, we cannot conclude for certain that our PERMANOVA results are truly because of harvest season for bray-curtis. 
+Harvest season might have some biological difference in the variance, which means that we need to be careful in our PERMANOVA interpretations. 
 
 # Interpreting PERMANOVA with Betadisper
 
@@ -756,12 +755,12 @@ str(scaled_soren_pcoa)
 sorensen_pcoa_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_soren_pcoa,
-                color = "station",
-                shape = "date",
+                color = "season_environment",
+                shape = "Sampling_point",
                 title = "Sorensen PCoA") + 
-  scale_color_manual(values = station_colors) + 
+  scale_color_manual(values = season_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -777,12 +776,12 @@ scaled_bray_pcoa <-
 bray_pcoa_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_bray_pcoa,
-                color = "station",
-                shape = "date",
+                color = "season_environment",
+                shape = "Sampling_point",
                 title = "Bray-Curtis PCoA") + 
-  scale_color_manual(values = station_colors) + 
+  scale_color_manual(values = season_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -799,9 +798,11 @@ Above are two PCoA (Principal Coordinates Analysis) plots showing differences in
 
 We can conclude that: 
 
-1. Station is the dominant factor structuring microbial communities.
-2. Date also contributes, likely reflecting environmental or seasonal change.
-3. Bray-Curtis highlights both spatial and temporal patterns more strongly because between the two axes more variation is explained (~50%) than Sorensen (~35%), suggesting that abundance differences among taxa matter in this system. We gain ~15% of more variation explained in the data in 2 axes when incorporating abundances.
+1. Season is the dominant factor structuring microbial communities.
+2. Storage duration also contributes. However, its effect seems more random, similar to PERMANOVA results explaining a lower variation in the dataset.
+3. Both Sorensen and Bray-Curtis explain similar amount of variation (~46%). 
+
+PCoA revealed that harvest season is the primary factor shaping microbial community composition on chopped Romaine lettuce.  Presence/absence (Sorensen) metric shows strong seasonal clustering, confirming results from PERMANOVA. Storage duration (UBD vs. UBD5) contributes only weakly to variation, with no clear separation between sampling points.
 
 <span style="color: red;">INTERPRETATION #8: Plot your data using a PCoA. Interpret what you can conclude from the PCoA.</span>
 
@@ -831,12 +832,12 @@ scaled_soren_nmds <-
 sorensen_nmds_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_soren_nmds,
-                color = "station",
-                shape = "date",
+                color = "season_environment",
+                shape = "Sampling_point",
                 title = "Sorensen NMDS") + 
-  scale_color_manual(values = station_colors) + 
+  scale_color_manual(values = season_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -851,12 +852,12 @@ scaled_bray_nmds <-
 bray_nmds_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_bray_nmds,
-                color = "station",
-                shape = "date",
+                color = "season_environment",
+                shape = "Sampling_point",
                 title = "Bray-Curtis NMDS") + 
-  scale_color_manual(values = station_colors) + 
+  scale_color_manual(values = season_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -869,6 +870,24 @@ sorensen_nmds_plot + bray_nmds_plot +
 
 <span style="color: red;">INTERPRETATION #9: Plot your data using NMDS. Interpret what you can conclude from the NMDS.</span>
 
+**Sorensen NMDS:**
+- A clear visual separation by season:
+  -Early Fall samples (blue) cluster toward the bottom.
+  -Late Spring samples (yellow) cluster toward the top.
+This reflects seasonal shifts in species presence/absence.
+
+- Sampling point (UBD vs. UBD5) does not appear to drive strong separation—both shapes are intermingled within seasonal clusters, suggesting storage time has less influence on overall community presence/absence.
+
+- However, while NMDS shows apparent clustering by harvest season, the relatively high stress value (~0.24) indicates limited reliability in the 2D representation. Therefore, this pattern should be interpreted cautiously.
+
+**Bray-Curtis NMDS:**
+- Again, seasonal clustering is evident:
+  -Early Fall samples (blue) cluster lower and to the left.
+  -Late Spring samples (yellow) cluster higher and more spread out.
+
+- UBD vs. UBD5 (square vs. circle) again shows minimal effect, confirming that storage time does not drastically shift dominant taxa abundance.
+
+- However, similar to Sorensen, a relatively high stress value (~0.24) suggests limited reliability in the 2D representation. Therefore, this pattern should be interpreted cautiously.
 
 ## All ordinations together!
 
@@ -881,9 +900,31 @@ sorensen_nmds_plot + bray_nmds_plot +
 
 <span style="color: red;">INTERPRETATION #10: Plot both the PCoA and NMDS together. Which of the two visualizations work best for your data? Explain your reasoning.</span>
 
+**PCoA plots**
+- Sorensen PCoA (Panel A) and Bray-Curtis PCoA (Panel B) show clear separation by season (Early vs. Late).
+- Axis 1 in both plots explains a meaningful proportion of variation (23–24%), indicating strong structuring along that factor.
+- Clustering by season is visually strong and interpretable, and storage time (UBD vs. UBD5) does not appear to create strong subgrouping.
+
+**NMDS plots**
+- Sorensen NMDS (Panel C) and Bray-Curtis NMDS (Panel D) also show separation by season, but the pattern is slightly less distinct.
+- However, both NMDS plots have stress values of ~0.24, which indicates a weak fit. That means the pattern may not be trustworthy for interpreting microbial structure.
+- Storage effects remain visually minimal, consistent with PCoA results.
+
+PCoA works better for this dataset:
+
+- It provides lower-dimensional projections with clearly interpretable axes.
+- The explained variation is reasonably high (Axis 1 > 20%).
+- Patterns are cleaner and seasonal clustering is more distinct.
+NMDS stress values of 0.24 suggest that the NMDS projections are not reliable, which makes NMDS less trustworthy for interpreting.
+
 # Now what? 
 
 Based on the results above, which metric would you use to write up your paper: Sorensen or Bray-Curtis? 
+
+- I would use Sorensen as it showed similar results with Bray Curtis and resulted in significant seasonal differences in PERMANOVA. However, group variances were not homogeneous in Bray-Curtis across harvest seasons. Since they were homogeneous in Sorensen, I can interpret the results more confidently. Therefore, I'd prefer using Sorensen over Bray-Curtis.
+
+I can still mention Bray-Curtis. However, stating that the group dispersions were not homogeneous across seasons (p < 0.05), so these results should be interpreted with caution, as they may partially reflect differences in community heterogeneity rather than composition alone.
+
 
 # Final info for Reproducibility 
 
