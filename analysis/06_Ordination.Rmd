@@ -539,12 +539,12 @@ bray_season_adonis_margin
 
 #### Interpreting PERMANOVA
 
-So, as it applies to the Sorensen Dissimilarity, we can already draw a few conclusions about our data! We can state that: 
+So, as it applies to the Bray-Curtis Dissimilarity, we can already draw a few conclusions about our data! We can state that: 
 
 1. **Harvest Season** is the strongest factor, explaining ~`r round(bray_season_adonis_terms2$R2[1]*100, digits = 0)`% of the variation in microbial community composition, which is statistically significant based on the p-value of <`r bray_season_adonis_terms2$"Pr(>F)"[1]`. This suggests temporal differences play a major role in structuring the community.
 2. **Storage Duration** also seems to contribute significantly (~`r round(bray_season_adonis_terms2$R2[2]*100, digits = 0)`% of variation, with a p-value of <`r bray_season_adonis_terms2$"Pr(>F)"[2]`). However, it doesn't explain too much variation.
-3.	The **interaction between season and storage duration** explains an additional ~`r round(sorensen_season_adonis_terms2$R2[3]*100, digits = 0)`% of the variation, with a insignificant pvalue of <`r sorensen_season_adonis_terms2$"Pr(>F)"[3]`, meaning that community change over season is uniform across storage durations.
-4. Finally, the total residiuals of the model is ~`r round(sorensen_season_adonis_terms2$R2[4]*100, digits = 0)`% of the variation remains unexplained by these variables.
+3.	The **interaction between season and storage duration** explains an additional ~`r round(bray_season_adonis_terms2$R2[3]*100, digits = 0)`% of the variation, with a insignificant pvalue of <`r bray_season_adonis_terms2$"Pr(>F)"[3]`, meaning that community change over season is uniform across storage durations.
+4. Finally, the total residiuals of the model is ~`r round(bray_season_adonis_terms2$R2[4]*100, digits = 0)`% of the variation remains unexplained by these variables.
 
 
 ### Comparing Sorensen & Bray Curtis Results 
