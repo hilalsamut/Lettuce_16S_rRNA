@@ -1,7 +1,7 @@
 # Setting colors for season 
 season_colors <- c(
   "Early (Fall)" = "dodgerblue4",
-  "Late (Spring)" = "dodgerblue2")
+  "Late (Spring)" = "#D9CC3C")
 
 # Setting colors for storage duration 
 storage_colors <- c(
