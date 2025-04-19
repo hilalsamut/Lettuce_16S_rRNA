@@ -5,3 +5,6 @@
 */*/*.fastq.gz
 .Rproj.user
 .Rproj.user/**
+analysis/00_FastQC/
+.Rhistory
+.Rproj
