@@ -11,7 +11,7 @@
 
 <meta name="author" content="Hilal Samut" />
 
-<meta name="date" content="2025-04-19" />
+<meta name="date" content="2025-04-24" />
 
 <title>Between-Sample (Beta) Diversity of Microbes across Different Seasons and Storage Duration</title>
 
@@ -1681,7 +1681,7 @@ font-size: 0.95em;
 <h1 class="title toc-ignore">Between-Sample (Beta) Diversity of Microbes
 across Different Seasons and Storage Duration</h1>
 <h4 class="author">Hilal Samut</h4>
-<h4 class="date">April 19, 2025</h4>
+<h4 class="date">April 24, 2025</h4>
 
 </div>
 
@@ -1945,35 +1945,39 @@ samples.</p>
 ## sample_data() Sample Data:       [ 108 samples by 52 sample variables ]
 ## tax_table()   Taxonomy Table:    [ 299 taxa by 9 taxonomic ranks ]
 ## phy_tree()    Phylogenetic Tree: [ 299 tips and 298 internal nodes ]</code></pre>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co"># Look at it more!</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="co">#View(data.frame(otu_table(midpoint_rooted_physeq)))</span></span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="co">#View(data.frame(otu_table(scaled_physeq)))</span></span>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co"># Save the output</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="fu">save</span>(scaled_physeq, <span class="at">file =</span> <span class="st">&quot;data/06_Ordination/scaled_physeq.RData&quot;</span>)</span>
 <span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co"># Confirm seq read depth of scaled_physeq </span></span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>scaled_TotalSeqs_df <span class="ot">&lt;-</span> </span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>  scaled_physeq <span class="sc">%&gt;%</span></span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>  <span class="fu">sample_sums</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>  <span class="fu">data.frame</span>()</span>
-<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a></span>
-<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="fu">colnames</span>(scaled_TotalSeqs_df)[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="st">&quot;TotalSeqs&quot;</span></span>
-<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a></span>
-<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a><span class="co"># add a new column of num_ASVs (RAW, non-noramlized # ASVs)</span></span>
-<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a>scaled_TotalSeqsASVs_df <span class="ot">&lt;-</span> </span>
-<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a>  scaled_TotalSeqs_df <span class="sc">%&gt;%</span></span>
-<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">num_ASVs =</span> <span class="fu">colSums</span>(<span class="fu">otu_table</span>(scaled_physeq) <span class="sc">&gt;</span> <span class="dv">1</span>))</span>
-<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a></span>
-<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a><span class="co"># Plot it! </span></span>
-<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a>scaledSeq_histogram <span class="ot">&lt;-</span> </span>
-<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a>  scaled_TotalSeqs_df <span class="sc">%&gt;%</span></span>
-<span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> TotalSeqs)) <span class="sc">+</span> </span>
-<span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">50</span>) <span class="sc">+</span> </span>
-<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Scaled Seq Depth Histogram&quot;</span>) <span class="sc">+</span> </span>
-<span id="cb21-24"><a href="#cb21-24" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">2500</span>)) <span class="sc">+</span> </span>
-<span id="cb21-25"><a href="#cb21-25" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
-<span id="cb21-26"><a href="#cb21-26" tabindex="-1"></a></span>
-<span id="cb21-27"><a href="#cb21-27" tabindex="-1"></a><span class="co"># Scaling always gives us a range! </span></span>
-<span id="cb21-28"><a href="#cb21-28" tabindex="-1"></a><span class="co"># MInimum sequences</span></span>
-<span id="cb21-29"><a href="#cb21-29" tabindex="-1"></a><span class="fu">min</span>(scaled_TotalSeqs_df<span class="sc">$</span>TotalSeqs) </span></code></pre></div>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co"># Look at it more!</span></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="co">#View(data.frame(otu_table(midpoint_rooted_physeq)))</span></span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co">#View(data.frame(otu_table(scaled_physeq)))</span></span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a><span class="co"># Confirm seq read depth of scaled_physeq </span></span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a>scaled_TotalSeqs_df <span class="ot">&lt;-</span> </span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a>  scaled_physeq <span class="sc">%&gt;%</span></span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a>  <span class="fu">sample_sums</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a>  <span class="fu">data.frame</span>()</span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a></span>
+<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a><span class="fu">colnames</span>(scaled_TotalSeqs_df)[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="st">&quot;TotalSeqs&quot;</span></span>
+<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a></span>
+<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a><span class="co"># add a new column of num_ASVs (RAW, non-noramlized # ASVs)</span></span>
+<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a>scaled_TotalSeqsASVs_df <span class="ot">&lt;-</span> </span>
+<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a>  scaled_TotalSeqs_df <span class="sc">%&gt;%</span></span>
+<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">num_ASVs =</span> <span class="fu">colSums</span>(<span class="fu">otu_table</span>(scaled_physeq) <span class="sc">&gt;</span> <span class="dv">1</span>))</span>
+<span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a></span>
+<span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a><span class="co"># Plot it! </span></span>
+<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a>scaledSeq_histogram <span class="ot">&lt;-</span> </span>
+<span id="cb21-24"><a href="#cb21-24" tabindex="-1"></a>  scaled_TotalSeqs_df <span class="sc">%&gt;%</span></span>
+<span id="cb21-25"><a href="#cb21-25" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> TotalSeqs)) <span class="sc">+</span> </span>
+<span id="cb21-26"><a href="#cb21-26" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">50</span>) <span class="sc">+</span> </span>
+<span id="cb21-27"><a href="#cb21-27" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Scaled Seq Depth Histogram&quot;</span>) <span class="sc">+</span> </span>
+<span id="cb21-28"><a href="#cb21-28" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">2500</span>)) <span class="sc">+</span> </span>
+<span id="cb21-29"><a href="#cb21-29" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb21-30"><a href="#cb21-30" tabindex="-1"></a></span>
+<span id="cb21-31"><a href="#cb21-31" tabindex="-1"></a><span class="co"># Scaling always gives us a range! </span></span>
+<span id="cb21-32"><a href="#cb21-32" tabindex="-1"></a><span class="co"># MInimum sequences</span></span>
+<span id="cb21-33"><a href="#cb21-33" tabindex="-1"></a><span class="fu">min</span>(scaled_TotalSeqs_df<span class="sc">$</span>TotalSeqs) </span></code></pre></div>
 <pre><code>## [1] 170</code></pre>
 <div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="co"># Total Range </span></span>
 <span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a><span class="fu">range</span>(scaled_TotalSeqs_df)</span></code></pre></div>
@@ -3575,11 +3579,11 @@ alone.</p>
 <div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" tabindex="-1"></a><span class="co"># Take the time now that we are at the end of the script</span></span>
 <span id="cb67-2"><a href="#cb67-2" tabindex="-1"></a>end_time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
 <span id="cb67-3"><a href="#cb67-3" tabindex="-1"></a>end_time </span></code></pre></div>
-<pre><code>## [1] &quot;2025-04-19 17:58:43 EDT&quot;</code></pre>
+<pre><code>## [1] &quot;2025-04-24 13:02:11 EDT&quot;</code></pre>
 <div class="sourceCode" id="cb69"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" tabindex="-1"></a><span class="co"># Echo the elapsed time</span></span>
 <span id="cb69-2"><a href="#cb69-2" tabindex="-1"></a>elapsed_time <span class="ot">&lt;-</span> <span class="fu">round</span>((end_time <span class="sc">-</span> start_time), <span class="dv">3</span>)</span>
 <span id="cb69-3"><a href="#cb69-3" tabindex="-1"></a>elapsed_time</span></code></pre></div>
-<pre><code>## Time difference of 14.491 secs</code></pre>
+<pre><code>## Time difference of 14.992 secs</code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session Information</h2>
@@ -3595,7 +3599,7 @@ alone.</p>
 ##  collate  en_US.UTF-8
 ##  ctype    en_US.UTF-8
 ##  tz       America/New_York
-##  date     2025-04-19
+##  date     2025-04-24
 ##  pandoc   3.1.1 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/ (via rmarkdown)
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────

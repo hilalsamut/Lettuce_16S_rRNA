@@ -202,6 +202,10 @@ scaled_physeq <-
 # Look at it 
 scaled_physeq
 
+# Save the output
+
+save(scaled_physeq, file = "data/06_Ordination/scaled_physeq.RData")
+
 # Look at it more!
 #View(data.frame(otu_table(midpoint_rooted_physeq)))
 #View(data.frame(otu_table(scaled_physeq)))
