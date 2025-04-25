@@ -1,0 +1,718 @@
+---
+title: "Microbial Compositional Analysis Across Different Seasons and Storage Duration"
+author: "Hilal Samut"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
+                      fig.path = "../figures/07_Composition/")
+```
+
+# Goals
+
+In this file, we will perform compositional analysis of our scaled/noramlized/rarefied microbial dataset! 
+
+1. Load in scaled/normalized phyloseq object. 
+2. Calculate the relative abundances of taxonomic groups at various levels: 
+    A. Phylum
+    B. Genus
+    C. ASV 
+3. Plot them, and narrow in on specific taxnomic group of interest
+
+## Inputs 
+
+1. We will need the `scaled_physeq.RData`, which includes a rooted tree that we created in `analysis/06_Ordination/scaled_physeq.RData`. 
+
+## Outputs 
+
+1. Beautiful visualizations of microbial taxa and how they vary across parameters related to our study: station (categorical) and salinity (continuous).
+2. Run some stats! 
+
+# Compositional Data 
+
+Microbial abundance data—like 16S rRNA gene or metagenomics data—are typically **compositional:** they represent relative abundances constrained to a constant total (*e.g.,* percent or proportions). This introduces spurious correlations and other issues if analyzed with traditional statistics. This is a very important limitation to microbial data! 
+
+
+<span style="color: red;">INTERPRETATION #1: What are the limitations of interpreting microbial abundance from relative (aka. compositional) rather than absolute counts?</span>
+
+Relative abundance adds up to a constant, which means that an increase in relative abundance of one taxon will cause a decrease in relative abundances of other taxa even though their absolute abundances remain unchanged. This causes challenges in terms of statistics, requiring specialized statistical methods. 
+
+# Setup 
+
+## Load Packages 
+```{r load-packages}
+# Load in the packages 
+pacman::p_load(tidyverse, devtools, DT, phyloseq, patchwork, 
+               install = FALSE)
+
+# load colors
+source("code/colors.R")
+```
+
+
+## 1. Load in Scaled Phyloseq object 
+
+The following phyloseq object contains microbial community composition data in a standardized format. In this case, we’ve already normalized the reads (scaled to 1,942 per sample), which is essential for comparing relative abundances.
+
+
+```{r load-data}
+load("data/06_Ordination/scaled_physeq.RData")
+
+# Look at the data 
+scaled_physeq
+
+# Intuition check - scaled at 1,942
+min(sample_sums(scaled_physeq))
+range(sample_sums(scaled_physeq))
+```
+
+# Taxonomic Analysis! 
+
+In this analysis, we will drill down from phylum to ASV level analyses, which will enable increasingly detailed insights into microbial diversity and potential ecological roles. However, it is also important for us to remember that deeper levels also come with increased noise and data sparsity, especially for rare groups. 
+
+## A. Phylum 
+
+Taxonomic analysis often begins at broader levels (*e.g.,* Phylum) to visualize overarching trends before zooming in on finer-scale patterns. This step allows us to identify which microbial groups dominate across samples and which may respond to environmental gradients like salinity.
+
+Now, let's calculate the relative abundance of the phyla across all the samples. **NOTE:** To do this, it is imperative that we have scaled the data to a constant sequencing depth. 
+
+```{r calc-phylum-df}
+# Create a phylum level dataframe
+phylum_df <- 
+  scaled_physeq %>%
+  # Agglomerate all ASV counts within a phylum
+  tax_glom(taxrank = "Phylum") %>%
+  # Calculate the relative abundance! 
+  transform_sample_counts(function(x) {x/sum(x)}) %>%
+  # Create a dataframe from phyloseq object
+  psmelt() %>%
+  # Filter out Phyla < 1 % 
+  #dplyr::filter(Abundance > 0.01) %>%
+  # fix the order of date
+  mutate(Sampling_point = fct_relevel(Sampling_point, c("UBD", "UBD5")),
+         # Fix the station order 
+         season_environment = fct_relevel(season_environment, c("Early (Fall)", "Late (Spring)")))
+
+## What are the phylum abundances? 
+phylum_df %>%
+  group_by(Phylum) %>%
+  summarize(mean_PercAbund = round(mean(Abundance), digits = 4)) %>%
+  arrange(-mean_PercAbund) %>%
+  datatable()
+
+# Make a list of the top phyla 
+top10_phyla <- 
+  phylum_df %>%
+  group_by(Phylum) %>%
+  summarize(mean_PercAbund = mean(Abundance)) %>%
+  arrange(-mean_PercAbund) %>%
+  head(n = 10) %>%
+  pull(Phylum)
+```
+
+<span style="color: red;">INTERPRETATION #2: Which phyla in your dataset have the highest relative abundances? What are their abundances? We will focus on these phyla for plotting below. :)</span>
+
+The following are the phyla that are the most abundant in my dataset and their respective relative abundances: 
+`r phylum_df %>% group_by(Phylum) %>% summarize(mean_PercAbund = round(mean(Abundance), digits = 4)) %>% arrange(-mean_PercAbund) %>% datatable()`  
+
+## Stacked Bar plots 
+
+Visualization helps detect patterns in composition and abundance that statistical models may later test. Stacked bar plots are often used but can obscure individual sample variation and visualize too much data all at once. 
+
+Therefore, we will also explore faceted and jittered boxplots below the bar plots to see sample-level trends more clearly.
+
+```{r phylum-stacked-bar, fig.width=9, fig.height=3.5}
+# Stacked Bar Plot With All phyla 
+# Plot Phylum Abundances - make sure to load phylum_colors 
+phylum_df %>%
+  dplyr::filter(Phylum %in% top10_phyla) %>%
+  # Warning: It's important to have one sample per x value, 
+  # otherwise, it will take the sum between multiple samples
+  dplyr::filter(brand == "A") %>%
+  #dplyr::filter(fraction == "Whole") %>%
+  ggplot(aes(x = Sampling_point, y = Abundance, fill = Phylum)) + 
+  facet_grid(.~season_environment) + 
+  geom_bar(stat = "identity", color = "black") + 
+  labs(title = "Top 10 Phyla: Lettuce Samples") + 
+  scale_fill_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+```
+
+
+## Faceted Bar plot 
+
+To help compare the phylum abundance between sample types, we can facet by phylum to better see how the changes occur across the stations, which is masked in the stacked bar plot. It's a little better than the stacked bar plot, however, we can do even better! 
+
+```{r phylum-facet-bar, fig.width=5, fig.height=12}
+phylum_df %>%
+  dplyr::filter(Phylum %in% top10_phyla) %>%
+  # Individual sample comparison of surface waters, whole fraction 
+  # This will allow us to look at individual samples! 
+  # Note that whenever plotting stacked bar plots, you should always look at Individual samples! 
+  dplyr::filter(brand == "A") %>%
+  dplyr::filter(Inoculum == "Ctrl") %>%
+  ggplot(aes(x = season_environment, y = Abundance, fill = Phylum)) + 
+  facet_grid(Phylum~Sampling_point, scale = "free") + 
+  # add the stacked bar 
+  geom_bar(stat = "identity", color = "black") + 
+  # change the colors to be our selected colors 
+  scale_fill_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+
+
+### Or combined together: 
+phylum_df %>%
+  dplyr::filter(Phylum %in% top10_phyla) %>%
+  ggplot(aes(x = season_environment, y = Abundance, fill = Phylum, color = Phylum)) + 
+  facet_grid(Phylum~Sampling_point, scale = "free") + 
+  # add the stacked bar 
+  geom_jitter() +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) + 
+  # change the colors to be our selected colors 
+  scale_fill_manual(values = phylum_colors) + 
+  scale_color_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+```
+
+
+
+```{r plot-phylum-season, fig.width=12, fig.height=6}
+### Or combined together: 
+phylum_df %>%
+  dplyr::filter(Phylum %in% top10_phyla) %>%
+  ggplot(aes(x = season_environment, y = Abundance, fill = Phylum, color = Phylum)) + 
+  facet_wrap(Phylum~., scales = "free", nrow = 2) + 
+  # add the stacked bar 
+  geom_jitter() +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) + 
+  labs(x = "Season") +
+  # change the colors to be our selected colors 
+  scale_fill_manual(values = phylum_colors) + 
+  scale_color_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+```
+
+<span style="color: red;">INTERPRETATION #3: Make the above dotplot and boxplot for your sample types and your most abundant phyla. What *initial* conclusions can you draw regarding the sampled microbial communities as it relates to your scientific question?</span>
+
+Microbial community composition varied modestly between harvest seasons in chopped Romaine. While several phyla appear stable across seasons, others show potential slight shifts in relative abundance, suggesting subtle ecological filtering driven by seasonal environmental conditions (e.g., temperature, field microbiota, or post-harvest handling differences).
+
+This plot reveals patterns in phylum-level dynamics, with some taxa remaining ubiquitous, while others hint at seasonal niche preference or sensitivity to pre- and post-harvest changes.
+
+- **Actinomycetota** exhibited a modest increase in relative abundance in Late (Spring) samples compared to Early (Fall), suggesting a possible preference for warmer or more microbially diverse conditions associated with late-season harvests. This aligns with the hypothesis that certain soil- or plant-associated taxa might bloom under spring conditions.
+
+- **Bacillota** remained relatively consistent between seasons in both median and range of abundance, reflecting their potential role as core microbiota in processed leafy greens. Their persistence may relate to spore-forming capacity and tolerance to environmental stressors.
+
+- **Pseudomonadota** were overwhelmingly dominant across all samples and seasons, indicating strong ubiquity and resilience. Their broad presence likely reflects metabolic flexibility and robust survival through washing and cold storage processes.
+
+- **Bacteroidota** and **Campylobacterota** were detected at low-to-moderate levels with slightly higher relative abundance in Spring. While these changes are subtle, they may suggest microenvironmental shifts affecting these groups, or reflect stochastic colonization patterns during harvest.
+
+- Rare phyla (e.g., Chloroflexota, Armatimonadota, Patescibacteria) showed consistently low abundance and limited variation across seasons. These groups may belong to the rare biosphere or could be stochastically distributed due to low biomass and detection thresholds in 16S rRNA datasets.
+
+These suggest that while the dominant phyla (Pseudomonadota and Bacillota) remain consistent across seasons, several less-abundant groups, particularly Actinomycetota, may exhibit seasonally influenced shifts.
+
+### A1. Actinomycetota 
+
+```{r phylum-actinos, fig.width=7, fig.height=3.5}
+# Narrow in on a specific group
+# Actinomycetota - y: abundance, x: season_environment, dot plot + boxplot
+actino_phylum_season <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Actinomycetota") %>%
+  # build the plot 
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Actinomycetota Phylum", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Plot by Storage
+actino_phylum_storage <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Actinomycetota") %>%
+  # build the plot 
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Actinomycetota Phylum", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# CONTINUOUS 
+#actino_phylum_salinity <- 
+  #phylum_df %>%
+  #dplyr::filter(Phylum == "Actinomycetota") %>%
+  #ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  #geom_point(aes(color = station)) + 
+  #theme_bw() + 
+  #geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  #labs(title = "Actinomycetota Phylum") + 
+  #scale_color_manual(values = station_colors) + 
+  #theme(legend.position = "none")
+
+# Collect both of the plots together into one 
+actino_phylum_season + actino_phylum_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+**Actinomycetota Abundance Across Seasons and Storage**
+
+A. Actinomycetota showed higher relative abundance in Late Spring compared to Early Fall, suggesting a slight seasonal effect. As soil-associated bacteria known for decomposing organic matter, their increase may reflect warmer temperatures, greater microbial transfer during harvest, or seasonal shifts in plant-microbe interactions. This pattern supports mild ecological filtering linked to harvest season.
+
+B. In contrast, mean Actinomycetota abundance declined across storage duration for samples tested at the “Use By Date” (UBD) and five days after (UBD5). This suggests that storage time under refrigerated conditions may  significantly influence the abundance of this phylum, at least at this taxonomic level.
+
+### A2. Bacillota 
+
+```{r phylum-bacillota, fig.width=7, fig.height=3.5}
+# Narrow in on a specific group
+# Bacillota - y: abundance, x: season_environment, dot plot + boxplot
+
+# Plot by season 
+bacillota_phylum_season <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Bacillota") %>%
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacillota Phylum", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Plot by storage
+bacillota_phylum_storage <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Bacillota") %>%
+  # build the plot 
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacillota Phylum", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Collect both of the plots together into one 
+bacillota_phylum_season + bacillota_phylum_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+
+**Bacillota Abundance Across Seasons and Storage**
+
+A. Bacillota showed similar relative abundances across both seasons, with wide variability but no clear seasonal trend. As spore-forming bacteria commonly associated with soil and plants, their consistent presence suggests they may be part of the core lettuce microbiome, resilient to environmental or harvest-time fluctuations.
+
+B. Likewise, Bacillota abundance remained stable across storage duration, with no major differences between samples tested at the Use By Date (UBD) and five days after (UBD5). This suggests that storage time does not substantially affect the abundance of this phylum, possibly due to their ability to form spores and persist in harsh conditions.
+
+### A3. Pseudomonadota
+
+```{r phylum-pseudomona, fig.width=7, fig.height=3.5}
+# Narrow in on a specific group
+# Pseudomonadota - y: abundance, x: season_environment, dot plot + boxplot
+
+# Plot by season 
+pseudomona_phylum_season <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Pseudomonadota") %>%
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Pseudomonadota Phylum", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Plot by storage
+pseudomona_phylum_storage <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Pseudomonadota") %>%
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Pseudomonadota Phylum", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Collect both of the plots together into one 
+pseudomona_phylum_season + pseudomona_phylum_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+
+**Pseudomonadota Abundance Across Seasons and Storage**
+
+A. Pseudomonadota dominated the microbial community in both seasons, with slightly higher median abundance in Late Spring. Their consistent prevalence and broad variability highlight their ecological versatility and ability to persist under diverse environmental and storage conditions—traits typical of this metabolically adaptable group.
+
+B. Storage duration had minimal effect on Pseudomonadota abundance, with similar distributions at the Use By Date (UBD) and five days after (UBD5). Their stability over time reinforces their resilience and potential role in spoilage or persistence during extended storage.
+
+### A4. Bacteroidota
+
+```{r phylum-bacteroidota, fig.width=7, fig.height=3.5}
+# Narrow in on a specific group
+# Bacteroidota - y: abundance, x: season_environment, dot plot + boxplot
+
+# Plot by season 
+bacteroidota_phylum_season <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Bacteroidota") %>%
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacteroidota Phylum", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Plot by storage 
+bacteroidota_phylum_storage <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Bacteroidota") %>%
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacteroidota Phylum", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# Collect both of the plots together into one 
+bacteroidota_phylum_season + bacteroidota_phylum_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+**Bacteroidota Abundance Across Seasons and Storage**
+
+A. Bacteroidota were detected at low relative abundances in both seasons, with a slight increase in Late Spring. Their patchy distribution and higher variability suggest they may respond to microenvironmental factors, rather than strong seasonal filtering.
+
+B. Storage duration also appeared to modestly influence Bacteroidota levels, with a small increase observed at five days after the Use By Date (UBD5). This could reflect post-harvest microbial succession or growth of specific Bacteroidota taxa during extended refrigeration.
+
+### Phylum Summary 
+
+<span style="color: red;">INTERPRETATION #4: Based on these phylum-level analyses, were there any phyla that you were able to identify to focus on moving forward for deeper taxonomic analyses? Why?</span>
+
+Based on these analyses, several groups were identified for deeper taxonomic analyses. **Actinomycetota** showed a clear increase in relative abundance during Late Spring, suggesting potential seasonal enrichment of soil- or plant-associated taxa such as Streptomyces, which may influence lettuce microbiota through decomposition or antimicrobial activity. **Pseudomonadota** were overwhelmingly dominant across all samples and seasons, making them a priority for genus- or species-level resolution to distinguish beneficial strains from potential spoilage- or pathogen-associated members such as Pseudomonas or Enterobacter. These phyla merit further analysis to better understand their roles in seasonal microbial dynamics and post-harvest quality of lettuce.
+
+Based on these analyses, **Pseudomonadota** and **Bacillota** were identified as strong candidates for deeper taxonomic investigation. **Pseudomonadota** were overwhelmingly dominant across all samples and seasons, making them a priority for genus- or species-level resolution to distinguish beneficial strains from potential spoilage- or pathogen-associated members such as Pseudomonas or Enterobacter. These phyla merit further analysis to better understand their roles in seasonal microbial dynamics and post-harvest quality of lettuce. **Bacillota** maintained relatively high abundance across both seasons and storage durations, indicating possible functional importance and ecological persistence. Further resolution at the genus or species level may help clarify their roles in lettuce quality and microbial succession.
+
+## B. Genus
+
+Let's first calculate the genus data frame. 
+
+```{r genus-actino-plots, fig.width=12, fig.height=4}
+# Calculate the Family relative abundance 
+# Note: The read depth MUST be normalized in some way: scale_reads
+genus_df <- 
+  scaled_physeq %>%
+  # agglomerate at the phylum level 
+  tax_glom(taxrank = "Genus") %>% 
+  # Transform counts to relative abundance 
+  transform_sample_counts(function (x) {x/sum(x)}) %>%
+  # Melt to a long format 
+  psmelt() %>%
+  # Fix the order of date
+  mutate(Sampling_point = fct_relevel(Sampling_point, c("UBD", "UBD5")),
+         # Fix the station order 
+         season_environment = fct_relevel(season_environment, c("Early (Fall)", "Late (Spring)")))
+```
+
+
+### B1. Pseudomonadota Genera 
+
+```{r pseudomona-genus, fig.width=6, fig.height=6}
+# Pseudomonadota
+# Plot genus 
+pseudomona_genus_season <- 
+  genus_df %>%
+  dplyr::filter(Phylum == "Pseudomonadota") %>%
+  # At first, plot all of the genera and then subset the ones that have interesting trends
+  dplyr::filter(Genus %in% c("Pseudomonas", "Nissabacter")) %>%
+  # build the plot 
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  facet_wrap(.~Genus, scales = "free_y", nrow = 1) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Pseudomonadota Genera", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+pseudomona_genus_storage <- 
+  genus_df %>%
+  dplyr::filter(Phylum == "Pseudomonadota") %>%
+  # At first, plot all of the genera and then subset the ones that have interesting trends
+  dplyr::filter(Genus %in% c("Pseudomonas", "Nissabacter")) %>%
+  # build the plot 
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  facet_wrap(.~Genus, scales = "free_y", nrow = 1) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Pseudomonadota Genera", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Collect the Pseudomonadota Plots
+pseudomona_genus_season / pseudomona_genus_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+**Genera-Level Response of Pseudomonadota to Season and Storage**
+
+Pseudomonas: This genus drove the dominance of Pseudomonadota and increased in Late Spring, mirroring the seasonal trend seen at the phylum level. However, this genus-level view confirms that Pseudomonas is primarily responsible for the seasonal shift, rather than a uniform increase across all genera in Pseudomonadota. Its stable presence across storage durations suggests strong resilience and potential roles in spoilage or cold adaptation.
+
+Nissabacter: Contrary to the Pseudomonadota trend, Nissabacter decreased in Late Spring, despite overall phylum abundance being stable or increasing. This divergence from the phylum-level pattern indicated that different genera within the same phylum may respond in opposite directions to environmental factors, emphasizing the need for genus-level resolution when interpreting ecological shifts.
+
+### B2. Bacillota Genera 
+
+```{r bacillota-genus, fig.width=6, fig.height=6}
+# Plot genus: Categorical
+bacillota_genus_season <- 
+  genus_df %>%
+  dplyr::filter(Phylum == "Bacillota") %>%
+  dplyr::filter(Genus %in% c("Leuconostoc", "Weissella")) %>%
+  # build the plot 
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  facet_wrap(.~Genus, scales = "free_y", nrow = 1) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacillota Genus Abundance", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+bacillota_genus_storage <- 
+  genus_df %>%
+  dplyr::filter(Phylum == "Bacillota") %>%
+  dplyr::filter(Genus %in% c("Leuconostoc", "Weissella")) %>%
+  # build the plot 
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  facet_wrap(.~Genus, scales = "free_y", nrow = 1) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacillota Genus Abundance", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Collect the Bacillota Plots
+bacillota_genus_season / bacillota_genus_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+
+**Genus-Level Response of Bacillota Across Season and Storage Duration**
+
+Leuconostoc: This genus showed higher abundance in Early Fall and a notable increase with extended storage (UBD5). While Bacillota appeared relatively stable across seasons and storage durations at the phylum level, Leuconostoc's behavior suggests a potential role in spoilage or fermentation-like processes during storage.
+
+Weissella: Showed a similar pattern—slightly higher in Fall and slightly decreasing during storage. This again contrasts with the phylum-level stability and implies that some Bacillota genera may be outcompeted or suppressed as storage progresses.
+
+<span style="color: red;">INTERPRETATION #5: Please make some plots of mid-level taxonomic ranks (e.g. Genus, Family, Order) as it relates to your scientific question. Were there any changes in the mid-level taxonomic trends compared to the phylum-level results? What does that tell you about that taxonomic group?</span>
+
+
+## C. ASV level
+
+Now, let's take a look at the ASVs. This is where the *real* ecology/biology happens! This is because the ASV-level plots will provide us with a more detailed view of **which specific taxa (ASVs) are driving the overall trends seen at the higher taxonomic levels (e.g. phylum)** in relation to salinity gradients and station differences.
+
+Before we calculate the ASV-level abundances, let's take a second to think about *who* we'd like to consider. There's a lot of ASVs! In fact, there are `r ntaxa(scaled_physeq)`! It is difficult analyze all of them! Therefore, we will remove ASVs that have an overall count across the entire dataset of 196 or 1% of a scaled sample to 1962. This is a little arbitrary and therefore, you may choose a different threshold for your dataset. The goal here is to **dramatically decrease the number of ASVs in the dataset** to help make the ASV-level data analysis much easier. 
+
+Of course, if we had more time in class, we could run differential abundance and this would also help us to identify and statistically test which ASVs are important and also help us narrow on specific ASVs. 
+
+The goal with this lesson is to do some data exploration and then also test ASVs that are relevant for our specific study. Let's go! 
+
+```{r ASV-plots, fig.width=12, fig.height=4}
+# Calculate the Family relative abundance 
+# Note: The read depth MUST be normalized in some way: scale_reads
+ASV_df <- 
+  scaled_physeq %>%
+  # Prune out ASVs that have fewer than 100 counts! 
+  ## LOOK AT HOW MANY ARE REMOVED!
+  prune_taxa(taxa_sums(.) >= 196, .) %>%
+  # agglomerate at the phylum level 
+  tax_glom(taxrank = "ASV") %>% 
+  # Transform counts to relative abundance 
+  transform_sample_counts(function (x) {x/sum(x)}) %>%
+  # Melt to a long format 
+  psmelt() %>%
+  # fix the order of date
+  mutate(Sampling_point = fct_relevel(Sampling_point, c("UBD", "UBD5")),
+         # Fix the station order 
+         season_environment = fct_relevel(season_environment, c("Early (Fall)", "Late (Spring)")))
+```
+
+### C1. Pseudomonadota ASVs 
+
+```{r pseudomona-asvs, fig.width=6, fig.height=8}
+# Calculate top couple of ASVs 
+# Make a list of phyla the top phyla 
+top_pseudomona_ASVs <- 
+  ASV_df %>%
+  dplyr::filter(Phylum == "Pseudomonadota") %>%
+  group_by(ASV) %>%
+  summarize(mean_Abundance = mean(Abundance)) %>%
+  dplyr::filter(mean_Abundance > 0.005) %>%
+  pull(ASV)
+
+# Pseudomonadota
+# Plot ASVs 
+pseudomona_asv_season <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_pseudomona_ASVs) %>%
+  dplyr::filter(ASV %in% c("ASV_0010", "ASV_0023", "ASV_0025", "ASV_0029", "ASV_0030", "ASV_0035")) %>%
+  # build the plot 
+  ggplot(aes(x = season_environment, y = Abundance, 
+             fill = season_environment, color = season_environment)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Pseudomonadota ASVs", x = "Season") + 
+  scale_color_manual(values = season_colors) + 
+  scale_fill_manual(values = season_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Plot ASVs 
+pseudomona_asv_storage <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_pseudomona_ASVs) %>%
+  dplyr::filter(ASV %in% c("ASV_0010", "ASV_0023", "ASV_0025", "ASV_0029", "ASV_0030", "ASV_0035")) %>%
+  # build the plot 
+  ggplot(aes(x = Sampling_point, y = Abundance, 
+             fill = Sampling_point, color = Sampling_point)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Pseudomonadota ASVs", x = "Storage Duration") + 
+  scale_color_manual(values = storage_colors) + 
+  scale_fill_manual(values = storage_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Collect the Actinomycetota Plots
+pseudomona_asv_season + pseudomona_asv_storage + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+
+<span style="color: red;">INTERPRETATION #6: Were the most abundant ASVs in your dataset represented in your ASV-level plots? If not, please go back and plot them specifically. (Hint: Remember that we ordered our ASV names by abundance across the entire dataset. Therefore, ASV_0001 will be the most abundant, ASV_0007 will be the 7th most abundant and so on.)</span>
+
+<span style="color: red;">INTERPRETATION #7: Please make some plots at the ASV level as it relates to your scientific question. Were there any ASVs that were especially related to trends that you saw? Did a specific phylogenetic group all show the same trends (e.g. like the Actinomycetota ASVs above)? Or did the ASVs have various, likely niche-specific responses (similar to the Cyanobacteriota above)??</span>
+
+ASV_0010 (Pseudomonas) shows an increase in Late Spring, and remains relatively abundant during storage, echoing the seasonal enrichment seen at the genus and phylum level.
+
+ASV_0025 and ASV_0030 (Aquamonas) exhibit low abundance in Fall but become more prominent in Spring. This suggests they may benefit from warmer environmental conditions or Spring-associated microflora.
+
+ASV_0023 and ASV_0035 (Nissabacter) show relatively stable or decreasing patterns, with no strong seasonal or storage-linked shift, contrasting the trend of increasing abundance seen in some Pseudomonas ASVs.
+
+ASV_0029 (Pseudomonas) fluctuates slightly with season and storage but does not follow the same trajectory as ASV_0010, indicating intra-genus variability in ecological preferences or spoilage potential.
+
+<span style="color: red;">INTERPRETATION #8: Now, do a quick literature or google search and look back in the paper that you may be replicating (if applicable). Does your ASV-level changes represent something that is currently known? Or is this a novel result? What did you learn about this ASV or a group of ASVs in your dataset?</span>
+
+Studies have consistently identified Pseudomonas as a dominant genus in cold-stored lettuce, particularly under modified atmosphere packaging (MAP) at 6°C. For instance, Leonard et al. (2021) observed that Pseudomonas species diversified during storage, with certain species like P. marginalis being more prevalent in specific cultivars . Your observation of ASV_0010 (classified as Pseudomonas) increasing in Late Spring and maintaining abundance during storage corroborates these findings, suggesting its role in spoilage or resilience during storage.
+
+Conversely, the decrease of ASV_0025 and ASV_0030 (classified as Aquamonas) in Late Spring indicates niche-specific responses within the Pseudomonadota phylum, highlighting the importance of genus-level analysis to understand microbial dynamics accurately.
+
+ASV-level findings reflect known patterns in lettuce microbiomes during storage, particularly the dominance and diversification of Pseudomonas species. However, the observed genus- and strain-level variations within Pseudomonadota and Bacillota emphasize the complexity of microbial communities and the need for high-resolution analyses to accurately assess spoilage risks and microbial dynamics in fresh produce.
+
+
+
+
+
+# Session Information 
+For reproducibility 
+```{r session_info}
+devtools::session_info()
+```
+
+
