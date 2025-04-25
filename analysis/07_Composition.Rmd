@@ -465,8 +465,6 @@ B. Storage duration also appeared to modestly influence Bacteroidota levels, wit
 
 <span style="color: red;">INTERPRETATION #4: Based on these phylum-level analyses, were there any phyla that you were able to identify to focus on moving forward for deeper taxonomic analyses? Why?</span>
 
-Based on these analyses, several groups were identified for deeper taxonomic analyses. **Actinomycetota** showed a clear increase in relative abundance during Late Spring, suggesting potential seasonal enrichment of soil- or plant-associated taxa such as Streptomyces, which may influence lettuce microbiota through decomposition or antimicrobial activity. **Pseudomonadota** were overwhelmingly dominant across all samples and seasons, making them a priority for genus- or species-level resolution to distinguish beneficial strains from potential spoilage- or pathogen-associated members such as Pseudomonas or Enterobacter. These phyla merit further analysis to better understand their roles in seasonal microbial dynamics and post-harvest quality of lettuce.
-
 Based on these analyses, **Pseudomonadota** and **Bacillota** were identified as strong candidates for deeper taxonomic investigation. **Pseudomonadota** were overwhelmingly dominant across all samples and seasons, making them a priority for genus- or species-level resolution to distinguish beneficial strains from potential spoilage- or pathogen-associated members such as Pseudomonas or Enterobacter. These phyla merit further analysis to better understand their roles in seasonal microbial dynamics and post-harvest quality of lettuce. **Bacillota** maintained relatively high abundance across both seasons and storage durations, indicating possible functional importance and ecological persistence. Further resolution at the genus or species level may help clarify their roles in lettuce quality and microbial succession.
 
 ## B. Genus
@@ -540,9 +538,9 @@ pseudomona_genus_season / pseudomona_genus_storage +
 
 **Genera-Level Response of Pseudomonadota to Season and Storage**
 
-Pseudomonas: This genus drove the dominance of Pseudomonadota and increased in Late Spring, mirroring the seasonal trend seen at the phylum level. However, this genus-level view confirms that Pseudomonas is primarily responsible for the seasonal shift, rather than a uniform increase across all genera in Pseudomonadota. Its stable presence across storage durations suggests strong resilience and potential roles in spoilage or cold adaptation.
+*Pseudomonas*: This genus drove the dominance of Pseudomonadota and increased in Late Spring, mirroring the seasonal trend seen at the phylum level. However, this genus-level view confirms that *Pseudomonas* is primarily responsible for the seasonal shift, rather than a uniform increase across all genera in Pseudomonadota. Its stable presence across storage durations suggests strong resilience and potential roles in spoilage or cold adaptation.
 
-Nissabacter: Contrary to the Pseudomonadota trend, Nissabacter decreased in Late Spring, despite overall phylum abundance being stable or increasing. This divergence from the phylum-level pattern indicated that different genera within the same phylum may respond in opposite directions to environmental factors, emphasizing the need for genus-level resolution when interpreting ecological shifts.
+*Nissabacter*: Contrary to the Pseudomonadota trend, *Nissabacter* decreased in Late Spring, despite overall phylum abundance being stable or increasing. This divergence from the phylum-level pattern indicated that different genera within the same phylum may respond in opposite directions to environmental factors, emphasizing the need for genus-level resolution when interpreting ecological shifts.
 
 ### B2. Bacillota Genera 
 
@@ -591,9 +589,9 @@ bacillota_genus_season / bacillota_genus_storage +
 
 **Genus-Level Response of Bacillota Across Season and Storage Duration**
 
-Leuconostoc: This genus showed higher abundance in Early Fall and a notable increase with extended storage (UBD5). While Bacillota appeared relatively stable across seasons and storage durations at the phylum level, Leuconostoc's behavior suggests a potential role in spoilage or fermentation-like processes during storage.
+*Leuconostoc*: This genus showed higher abundance in Early Fall and a notable increase with extended storage (UBD5). While Bacillota appeared relatively stable across seasons and storage durations at the phylum level, Leuconostoc's behavior suggests a potential role in spoilage or fermentation-like processes during storage.
 
-Weissella: Showed a similar pattern—slightly higher in Fall and slightly decreasing during storage. This again contrasts with the phylum-level stability and implies that some Bacillota genera may be outcompeted or suppressed as storage progresses.
+*Weissella*: Showed a similar pattern—slightly higher in Fall and slightly decreasing during storage. This again contrasts with the phylum-level stability and implies that some Bacillota genera may be outcompeted or suppressed as storage progresses.
 
 <span style="color: red;">INTERPRETATION #5: Please make some plots of mid-level taxonomic ranks (e.g. Genus, Family, Order) as it relates to your scientific question. Were there any changes in the mid-level taxonomic trends compared to the phylum-level results? What does that tell you about that taxonomic group?</span>
 
@@ -630,7 +628,7 @@ ASV_df <-
 
 ### C1. Pseudomonadota ASVs 
 
-```{r pseudomona-asvs, fig.width=6, fig.height=8}
+```{r pseudomona-asvs, fig.width=12, fig.height=16}
 # Calculate top couple of ASVs 
 # Make a list of phyla the top phyla 
 top_pseudomona_ASVs <- 
@@ -679,13 +677,15 @@ pseudomona_asv_storage <-
         legend.position = "none")
 
 # Collect the Actinomycetota Plots
-pseudomona_asv_season + pseudomona_asv_storage + 
+pseudomona_asv_season / pseudomona_asv_storage + 
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "A")
 ```
 
 
 <span style="color: red;">INTERPRETATION #6: Were the most abundant ASVs in your dataset represented in your ASV-level plots? If not, please go back and plot them specifically. (Hint: Remember that we ordered our ASV names by abundance across the entire dataset. Therefore, ASV_0001 will be the most abundant, ASV_0007 will be the 7th most abundant and so on.)</span>
+
+The most abundant ASV, ASV_0001, was not represented in my ASV-level plots. I intended to plot it as well. Among my current ASVs in scaled_pyseq object, the most abundant ASV is ASV_0010, which was represented in the ASV-level plots here. 
 
 <span style="color: red;">INTERPRETATION #7: Please make some plots at the ASV level as it relates to your scientific question. Were there any ASVs that were especially related to trends that you saw? Did a specific phylogenetic group all show the same trends (e.g. like the Actinomycetota ASVs above)? Or did the ASVs have various, likely niche-specific responses (similar to the Cyanobacteriota above)??</span>
 
@@ -699,14 +699,13 @@ ASV_0029 (Pseudomonas) fluctuates slightly with season and storage but does not 
 
 <span style="color: red;">INTERPRETATION #8: Now, do a quick literature or google search and look back in the paper that you may be replicating (if applicable). Does your ASV-level changes represent something that is currently known? Or is this a novel result? What did you learn about this ASV or a group of ASVs in your dataset?</span>
 
-Studies have consistently identified Pseudomonas as a dominant genus in cold-stored lettuce, particularly under modified atmosphere packaging (MAP) at 6°C. For instance, Leonard et al. (2021) observed that Pseudomonas species diversified during storage, with certain species like P. marginalis being more prevalent in specific cultivars . Your observation of ASV_0010 (classified as Pseudomonas) increasing in Late Spring and maintaining abundance during storage corroborates these findings, suggesting its role in spoilage or resilience during storage.
+Studies have consistently identified *Pseudomonas* as a dominant genus in lettuce, particularly under modified atmosphere packaging (MAP) at 6°C. For instance, Leonard et al. (2021) observed that *Pseudomonas* species diversified during storage, with certain species like P. marginalis being more prevalent in specific cultivars . The observation of ASV_0010 (classified as *Pseudomonas*) increasing in Late Spring and maintaining abundance during storage corroborates these findings, suggesting its role in spoilage or resilience during storage.
 
-Conversely, the decrease of ASV_0025 and ASV_0030 (classified as Aquamonas) in Late Spring indicates niche-specific responses within the Pseudomonadota phylum, highlighting the importance of genus-level analysis to understand microbial dynamics accurately.
+Conversely, the decrease of ASV_0025 and ASV_0030 (classified as *Aquamonas*) in Late Spring indicates niche-specific responses within the Pseudomonadota phylum, highlighting the importance of genus-level analysis to understand microbial dynamics accurately.
 
-ASV-level findings reflect known patterns in lettuce microbiomes during storage, particularly the dominance and diversification of Pseudomonas species. However, the observed genus- and strain-level variations within Pseudomonadota and Bacillota emphasize the complexity of microbial communities and the need for high-resolution analyses to accurately assess spoilage risks and microbial dynamics in fresh produce.
+ASV-level findings reflect known patterns in lettuce microbiomes during storage,regarding particularly the dominance and diversification of *Pseudomonas* species. However, the observed genus- and strain-level variations within Pseudomonadota and Bacillota emphasize the complexity of microbial communities and the need for high-resolution analyses to accurately assess spoilage risks and microbial dynamics in fresh produce.
 
-
-
+Leonard, S.R., Simko, I., Mammel, M.K. et al. Seasonality, shelf life and storage atmosphere are main drivers of the microbiome and E. coli O157:H7 colonization of post-harvest lettuce cultivated in a major production area in California. Environmental Microbiome 16, 25 (2021). https://doi.org/10.1186/s40793-021-00393-y
 
 
 # Session Information 
