@@ -5,8 +5,8 @@ season_colors <- c(
 
 # Setting colors for storage duration 
 storage_colors <- c(
-  "UBD" = "dodgerblue4",
-  "UBD5" = "dodgerblue2")
+  "UBD" = "darkslategray2",
+  "UBD5" = "deeppink1")
 
 # Setting colors for brand
 brand_colors <- c(
