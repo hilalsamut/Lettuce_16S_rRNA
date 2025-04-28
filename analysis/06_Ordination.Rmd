@@ -768,7 +768,7 @@ In practice, the most common ordination methods in microbial ecology are:
 
 ```{r pcoa-plots, fig.height=3.5, fig.width=7}
 ### SORENSEN 
-# First, calculate PCoA with Soresen
+# First, calculate PCoA with Sorensen
 scaled_soren_pcoa <- 
   ordinate(physeq = scaled_physeq,
          method = "PCoA",
@@ -781,12 +781,12 @@ str(scaled_soren_pcoa)
 sorensen_pcoa_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_soren_pcoa,
-                color = "season_environment",
-                shape = "Sampling_point",
+                color = "Sampling_point",
+                shape = "season_environment",
                 title = "Sorensen PCoA") + 
-  scale_color_manual(values = season_colors) + 
+  scale_color_manual(values = storage_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = Sampling_point)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -802,12 +802,12 @@ scaled_bray_pcoa <-
 bray_pcoa_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_bray_pcoa,
-                color = "season_environment",
-                shape = "Sampling_point",
+                color = "Sampling_point",
+                shape = "season_environment",
                 title = "Bray-Curtis PCoA") + 
-  scale_color_manual(values = season_colors) + 
+  scale_color_manual(values = storage_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = Sampling_point)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -858,12 +858,12 @@ scaled_soren_nmds <-
 sorensen_nmds_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_soren_nmds,
-                color = "season_environment",
-                shape = "Sampling_point",
+                color = "Sampling_point",
+                shape = "season_environment",
                 title = "Sorensen NMDS") + 
-  scale_color_manual(values = season_colors) + 
+  scale_color_manual(values = storage_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = Sampling_point)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
@@ -878,12 +878,12 @@ scaled_bray_nmds <-
 bray_nmds_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_bray_nmds,
-                color = "season_environment",
-                shape = "Sampling_point",
+                color = "Sampling_point",
+                shape = "season_environment",
                 title = "Bray-Curtis NMDS") + 
-  scale_color_manual(values = season_colors) + 
+  scale_color_manual(values = storage_colors) + 
   scale_shape_manual(values = c(15, 16, 17)) + 
-  geom_point(size = 5, alpha = 0.5, aes(color = season_environment)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = Sampling_point)) + 
   theme_bw() + 
   theme(legend.position = "right")
 
