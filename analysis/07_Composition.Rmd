@@ -201,12 +201,12 @@ phylum_df %>%
 ### Or combined together: 
 phylum_df %>%
   dplyr::filter(Phylum %in% top10_phyla) %>%
-  ggplot(aes(x = season_environment, y = Abundance, fill = Phylum, color = Phylum)) + 
+  ggplot(aes(x = Sampling_point, y = Abundance, fill = Phylum, color = Phylum)) + 
   facet_wrap(Phylum~., scales = "free", nrow = 2) + 
   # add the stacked bar 
   geom_jitter() +
   geom_boxplot(outlier.shape = NA, alpha = 0.5) + 
-  labs(x = "Season") +
+  labs(x = "Storage") +
   # change the colors to be our selected colors 
   scale_fill_manual(values = phylum_colors) + 
   scale_color_manual(values = phylum_colors) + 
