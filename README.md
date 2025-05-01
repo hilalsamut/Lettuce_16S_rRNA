@@ -14,15 +14,21 @@ The main drivers for this project:
 5. **Research Gap**: Limited knowledge of microbial changes after Use By Date
 
 ## Research Questions:
-The following research questions were 
-1. How does the microbial biodiversity in chopped Romaine lettuce change depending on harvest season?
+1. How does the microbial biodiversity in chopped Romaine lettuce change during storage beyond use by date (UBD)?
+	- **Null hypothesis**: The microbial biodiversity doesn’t change during storage beyond UBD.
+	- **Alternative Hypothesis**: Microbial biodiversity, particularly in terms of dominant community members, increases in chopped Romaine stored beyond UBD. This increase is expected due to the decline of early-dominant taxa, allowing multiple microbial taxa to co-dominate during extended storage due to cold storage and limited nutrients.
 
-	- Null hypothesis: The microbial biodiversity doesn’t change with harvest season.
+2. How does the microbial composition in chopped Romaine lettuce change during storage beyond use by date (UBD)?
+	- **Null Hypothesis**: Microbial composition does not differ for prolonged storage durations after UBD for chopped Romaine lettuce
+	- **Alternative Hypothesis**: 
+		- Microbial composition during prolonged storage is driven by presence or absence of rare taxa (i.e., Sorensen), with increased dissimilarity in the samples collected in UBD5 samples. 
+		- Dominant members of the microbial community (i.e., Bray-Curtis) are unique in UBD5 samples.
+## Methodology of 16S rRNA gene sequencing 
+This study targeted the **V3–V4** region of the 16S rRNA gene for microbial community profiling on chopped Romaine lettuce.
+- **Primers used**: 
+	- 341F: 5′-CCTACGGGNGGCWGCAG-3′
+	- 785R: 5′-GACTACHVGGGTATCTAATCC-3′
+- **Platform**: Illumina MiSeq
+- **Read Type**: Paired-end (2 × 300 bp)
+- **SRA Accession**: PRJNA792031
 
-	- Alternative Hypothesis: A rich microbial biodiversity is expected in chopped lettuce harvested in warmer seasons.
-
-2. How does the microbial biodiversity in chopped Romaine lettuce change with storage duration of lettuce at the “Use by date and five days after “Use by date".
-
-	- Null hypothesis: The microbial biodiversity doesn’t change with storage duration.
-
-	- Alternative Hypothesis: A rich microbial biodiversity is expected in chopped lettuce harvested in lettuce samples tested at five days after “Use by” date.
