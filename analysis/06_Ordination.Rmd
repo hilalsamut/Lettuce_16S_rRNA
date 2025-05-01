@@ -56,7 +56,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 <span style="color: red;">INTERPRETATION #1:  What is your scientific question and hypotheses? Do they relate to abundance? Presence/absence? Phylogeny?</span>
 
-How does the microbial biodiversity in chopped Romaine lettuce change depending on harvest season? 
+How does the microbial composition in chopped Romaine lettuce change depending on harvest season? 
 
 - *Null Hypothesis:* Microbial composition (*e.g.* Sorensen, Bray-Curtis, abundance-unweighted and -weighted UniFrac) does not differ between harvest seasons for chopped Romaine lettuce. 
 
