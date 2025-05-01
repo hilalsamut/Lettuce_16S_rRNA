@@ -1,4 +1,4 @@
-# Code File
+# Code Folder
 This directory contains supporting R scripts used across the analysis pipeline for reproducibility, consistency in styling, and modular code development.
 
 ## File Descriptions:
