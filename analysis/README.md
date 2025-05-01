@@ -23,12 +23,12 @@ Each step includes:
 8. Generate the ASV count table. (`otu_table` input for phyloseq.). 
 
 
-####Output that we will create in this file: 
+#### Output that we will create in this file: 
 
 1. Quality plots to asses pre- and post-quality trimming. 
 2. Written files that include the filtered and trimmed data. (Note that this will be written during the `filterAndTrim()` function.)
 
-###`02_AssignASVs`
+### `02_AssignASVs`
 #### Goals 
 
 1. Infer an error model for in the filtered sequences, separately on forward and reverse reads.
@@ -82,7 +82,7 @@ First, we will use the [phyloseq package](https://joey711.github.io/phyloseq/) t
 
 1. A **pre-processed S4 phyloseq object**: `raw_preprocessed_physeq.RData`.
 
-### 04A_Phylogenetic_Tree_Construction
+### `04A_Phylogenetic_Tree_Construction`
 #### Goals 
 
 The goal of this script is to make a phylogenetic tree so we can use it for phylogenetic community analyses like phylogenetic Hill Numbers and the UniFrac beta-diversity measures. 
@@ -100,4 +100,92 @@ The goal of this script is to make a phylogenetic tree so we can use it for phyl
 1. The **aligned 16S rRNA gene sequences**, which is the input to the phylogenetic tree. We will save our alignment to `data/04_PhylogeneticTree/MAAFT_aligned_ASV.fasta`
 2. The **calculated phylogenetic tree file**, which is the input to the phylogenetic tree. We will save our alignment to`data/04_PhylogeneticTree/ASVs_unrooted.tree`
 
+### `04B_Phylogenetic_Tree_Inspection`
+
+#### Goals 
+
+1. Load the [FastTree2](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009490) unrooted tree that we calculated in `analysis/04A_Phylogenetic_Tree_Construction.Rmd` and `raw_preprocessed_physeq``.  
+2. Merge the unrooted tree to the `raw_preprocessed_phyloseq` object.  
+3. Visualize and inspect tree with [ggtree](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12628).
+4. Evaluate long branches & prune ASVs, if needed. *If your dataset has long branches, you will need to do this before rooting!!*
+5. After pruning, root the tree, ideally within the Archaea and, if not, mid-root the tree.
+6. Combine the new, rooted tree with the phyloseq object. 
+7. Save 2 phyloseq objects: 1. Unrooted tree phyloseq object, 2. Rooted tree phyloseq object. 
+
+#### Inputs 
+
+1. Our previously pre-processed phyloseq object that has chloroplasts, mitochondria, reverse complements, and negative controls removed, which is located in `data/03_PreProcessing/raw_preprocessed_physeq`.
+2. The raw, unrooted maximum likelihood tree that we generated using  [FastTree2](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009490), which is located in `data/04_PhylogeneticTree/ASVs_unrooted.tree`
+
+#### Outputs 
+
+1. The output of this file will be a S4 phloseq objected called `phytree_preprocessed_physeq`, which we will save to `data/04_PhylogeneticTree/`. 
+
+### `05_Biodiversity.Rmd`
+#### Goals 
+
+Run an analysis on the within-sample biodiversity of the samples in our project. 
+
+1. Calculate the Hill Numbers of the samples using the iNEXT package. 
+2. Plot and evaluate the interpolated and extrapolated rarefaction curves from iNEXT. 
+3. Analyze the Hill numbers as it relates to stations and salinity (in PSU).
+4. Test and then answer the scientific question at hand! (Remember, we're doing biology!)
+
+#### Inputs 
+
+1. We will need the `phytree_preprocessed_physeq`, which includes a rooted tree (ideally within the archaea!) that we created in `analysis/04B_Phylogenetic_Tree_Inspection.Rmd`. 
+
+#### Outputs 
+
+1. Calculated biodiversity measures (Hill numbers) across every sample. 
+2. Figures to include in our scientific paper that visualize the data as it relates to the scientific question.
+3. Statistical tests conveying the measured and quantified changes and patterns in biodiversity.
+
+### `06_Ordination.Rmd`
+#### Goals 
+
+1. Load in phyloseq data with rooted tree & colors and functions.  
+2. Evaluate sequencing depth and remove samples, if needed.  
+3. Normalize the read counts between samples.  
+4. Calculate community **dis**similarities. Numbers between 0 and 1. If 0, completely similar versus if they are 1, then they're completely dissimilar.   
+    a. **Sorensen**: Shared Species as a binary value: Abundance-unweighted 
+    b. **Bray-Curtis**: Shared Abundant species: Abundance-weighted
+    c. **(Abundance-)Weighted UNIFRAC**: Consider Abundant Species and where they fall on the tree  
+5. Run statistics with functions from the vegan R package: 
+    a. PERMANOVA with `adonis2()`.
+    b. betadispR with `betadisper()` and `permutest()`. 
+6. Visualize the community data with two unconstrained Ordinations:  
+    a. **PCoA**: Linear Method. Eigenvalue = how much variation is explained by each axis. Choose to view axis 1, 2, 3, etc. and plot them together.  
+    b. **NMDS**: Non-linear. Smush multiple Dimensions into 2 or 3 axes. Need to report Stress value (ideally <0.15).  
+
+#### Inputs 
+
+1. We will need the `phytree_preprocessed_physeq.RData`, which includes a rooted tree that we created in `analysis/04B_Phylogenetic_Tree_Inspection.Rmd`. 
+
+#### Outputs 
+
+1. Calculated beta-diversity dissimilarity measures (*e.g.* Sorensen, Bray-Curtis, abundance-unweighted and -weighted UniFrac) across every sample. 
+2. Ordination figures (*i.e.,* PCoA/NMDS) to include in the scientific paper that visualize the data as it relates to the scientific question.
+3. Statistical tests (*i.e.,* PERMANOVA & betadisper) conveying the measured and quantified changes and patterns in biodiversity.
+
+### `07_Composition.Rmd`
+#### Goals
+
+In this file, we will perform compositional analysis of our scaled/noramlized/rarefied microbial dataset! 
+
+1. Load in scaled/normalized phyloseq object. 
+2. Calculate the relative abundances of taxonomic groups at various levels: 
+    A. Phylum
+    B. Genus
+    C. ASV 
+3. Plot them, and narrow in on specific taxnomic group of interest
+
+#### Inputs 
+
+1. We will need the `scaled_physeq.RData`, which includes a rooted tree that we created in `analysis/06_Ordination/scaled_physeq.RData`. 
+
+#### Outputs 
+
+1. Beautiful visualizations of microbial taxa and how they vary across parameters related to our study: station (categorical) and salinity (continuous).
+2. Run some stats! 
 
